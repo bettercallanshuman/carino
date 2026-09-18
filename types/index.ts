@@ -9,10 +9,31 @@ export interface Song {
   title: string;
   artist: string;
   album: string | null;
+  genre?: string | null;
   duration_seconds: number;
   audio_path: string;
   cover_path: string;
   created_at: string;
+  audio_url?: string;
+  cover_url?: string;
+}
+
+export interface Banner {
+  id: number;
+  title: string;
+  subtitle: string;
+  category?: string;
+  stats?: string;
+  gradient?: string;
+  image_url?: string;
+  link_url?: string;
+}
+
+export interface UserProfile {
+  name: string;
+  avatar_url: string | null;
+  gender: string;
+  date_of_birth: string;
 }
 
 export interface Playlist {
@@ -44,6 +65,7 @@ export interface RoomMember {
   room_id: string;
   user_id: string;
   display_name: string;
+  avatar_url?: string | null;
   joined_at: string;
 }
 
@@ -59,7 +81,7 @@ export interface RoomState {
 
 // ── Player ────────────────────────────────────────────────────────────────────
 
-export type SyncStatus = 'synced' | 'drifting' | 'correcting' | 'disconnected';
+export type SyncStatus = 'synced' | 'drifting' | 'correcting' | 'disconnected' | 'audio-locked' | 'ready';
 
 export interface PlayerState {
   currentTrack: Song | null;
@@ -76,6 +98,8 @@ export interface PlayerState {
   syncStatus: SyncStatus;
   estimatedDriftMs: number;
   isBuffering: boolean;
+  isAudioUnlocked: boolean;
+  needsAudioUnlock: boolean;
 }
 
 // ── Realtime Sync ─────────────────────────────────────────────────────────────

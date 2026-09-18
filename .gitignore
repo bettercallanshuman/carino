@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local media storage
+/.storage/
+
+# Supabase local temp files
+/supabase/.temp/

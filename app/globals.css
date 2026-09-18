@@ -1,26 +1,426 @@
+/* ── DM Sans — Closest freely available match to Google Sans ─────────────── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..900;1,9..40,300..900&display=swap');
+
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   CARIÑO — Design System v2
+   Brand: overlapping circles logo · DM Sans · dark · gradient accent
+   "Together, apart."
+────────────────────────────────────────────────────────────────────────────── */
+
+/* ── CARIÑO Brand Tokens ──────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── Surface / Background ─────────────────────────────────────────────── */
+  --bg:                     #000000;
+  --bg-sidebar:             #050505;
+  --surface:                #0C0C0C;
+  --surface-2:              #141414;
+  --surface-3:              #1C1C1E;
+  --elevated:               #222222;
+  --border:                 #1F1F1F;
+  --border-subtle:          #141414;
+
+  /* ── Text ─────────────────────────────────────────────────────────────── */
+  --text-1:                 #FFFFFF;
+  --text-2:                 #D1D1D6;
+  --text-3:                 #8E8E93;
+  --text-4:                 #48484A;
+
+  /* ── Brand & Accent ───────────────────────────────────────────────────── */
+  --accent:                 #FFFFFF;
+  --accent-hover:           #E5E5EA;
+  --brand-blue:             #3BB2F6;
+  --brand-purple:           #8B5CF6;
+  --brand-pink:             #EC4899;
+  --brand-orange:           #F97316;
+
+  /* Brand gradient string */
+  --brand-gradient: linear-gradient(135deg,
+    #FF5500 0%,
+    #E64A19 50%,
+    #D84315 100%
+  );
+
+  /* ── Layout Dimensions ────────────────────────────────────────────────── */
+  --sidebar-w:              220px;
+  --right-panel-w:          330px;
+  --topbar-h:               60px;
+  --player-h:               76px;
+  --nav-h:                  64px;
+
+  /* ── Spacing ──────────────────────────────────────────────────────────── */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  20px;
+  --sp-6:  24px;
+  --sp-8:  32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  /* ── Radius ───────────────────────────────────────────────────────────── */
+  --r-sm:   6px;
+  --r-md:   10px;
+  --r-lg:   14px;
+  --r-xl:   20px;
+  --r-2xl:  28px;
+  --r-full: 9999px;
+
+  /* ── Transition ───────────────────────────────────────────────────────── */
+  --t-fast:   120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --t-base:   220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --t-slow:   350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── iOS safe areas ───────────────────────────────────────────────────── */
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* ── Tailwind v4 theme ────────────────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --color-bg:               #0A0A0A;
+  --color-surface:          #141414;
+  --color-surface-2:        #1A1A1A;
+  --color-elevated:         #252525;
+  --color-border:           #2A2A2A;
+  --color-text-1:           #FFFFFF;
+  --color-text-2:           #B3B3B3;
+  --color-text-3:           #737373;
+  --color-brand-blue:       #3BB2F6;
+  --color-brand-purple:     #8B5CF6;
+  --color-brand-pink:       #EC4899;
+  --color-brand-rose:       #F43F5E;
+  --color-brand-orange:     #F97316;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  font-optical-sizing: auto;
+  background: var(--bg);
+  color: var(--text-1);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+  overflow: hidden;
+  height: 100dvh;
 }
+
+/* ── App Shell Layout ─────────────────────────────────────────────────────── */
+#app-root {
+  display: grid;
+  grid-template-areas:
+    "sidebar main   right"
+    "player  player player";
+  grid-template-columns: var(--sidebar-w) 1fr var(--right-panel-w);
+  grid-template-rows: 1fr var(--player-h);
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* Fullscreen Auth Viewport override — prevents login from being trapped in sidebar column */
+#app-root:has(.carino-auth-viewport) {
+  display: block !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  overflow: hidden !important;
+}
+
+.carino-auth-viewport {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  z-index: 100 !important;
+  background-color: #000000 !important;
+  grid-column: 1 / -1 !important;
+  grid-row: 1 / -1 !important;
+}
+
+.sidebar-area   { grid-area: sidebar; overflow-y: auto; overflow-x: hidden; }
+.main-area      { grid-area: main;   overflow-y: auto; overflow-x: hidden; }
+.right-area     { grid-area: right;  overflow-y: auto; overflow-x: hidden; }
+.player-area    { grid-area: player; overflow: hidden; }
+
+/* Mobile: collapse sidebar + right panel */
+@media (max-width: 900px) {
+  body { overflow: hidden; }
+  #app-root {
+    grid-template-areas:
+      "main"
+      "player"
+      "nav";
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr var(--player-h) var(--nav-h);
+  }
+  .sidebar-area  { display: none; }
+  .right-area    { display: none; }
+  .nav-area      { grid-area: nav; }
+}
+
+@media (min-width: 901px) {
+  .nav-area { display: none; }
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--surface-3); }
+
+/* ── Interactive ──────────────────────────────────────────────────────────── */
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus-visible {
+  outline: 2px solid var(--brand-blue);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+a {
+  color: inherit;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+img { display: block; max-width: 100%; }
+
+/* ── Nav item (sidebar + mobile) ──────────────────────────────────────────── */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-3);
+  transition: all var(--t-fast);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.nav-item:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+.nav-item.active {
+  color: #ffffff;
+  background: #1C1C1E;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.nav-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #636366;
+  padding: 0 12px;
+  margin-top: 24px;
+  margin-bottom: 8px;
+}
+
+/* ── Skeleton shimmer ─────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position: 600px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--surface) 25%,
+    var(--surface-2) 50%,
+    var(--surface) 75%
+  );
+  background-size: 1200px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--r-sm);
+}
+
+/* ── Album card ───────────────────────────────────────────────────────────── */
+.album-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition: transform var(--t-base);
+}
+.album-card:hover { transform: translateY(-2px); }
+.album-card:hover .album-art-img { box-shadow: 0 16px 40px rgba(0,0,0,0.6); }
+.album-art-img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  transition: box-shadow var(--t-base);
+}
+
+/* ── Press state ──────────────────────────────────────────────────────────── */
+.press {
+  transition: transform var(--t-fast), opacity var(--t-fast);
+}
+.press:active { transform: scale(0.94); opacity: 0.8; }
+
+/* ── Gradient text ────────────────────────────────────────────────────────── */
+.gradient-text {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Icon button ──────────────────────────────────────────────────────────── */
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-full);
+  color: var(--text-3);
+  transition: color var(--t-fast), background var(--t-fast);
+  flex-shrink: 0;
+}
+.icon-btn:hover {
+  color: var(--text-1);
+  background: var(--surface-2);
+}
+.icon-btn.sm { width: 28px; height: 28px; }
+.icon-btn.lg { width: 44px; height: 44px; }
+
+/* ── Play button (main) ───────────────────────────────────────────────────── */
+.play-btn-main {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-full);
+  background: #ffffff;
+  color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform var(--t-fast), background var(--t-fast);
+  cursor: pointer;
+  border: none;
+}
+.play-btn-main:hover { transform: scale(1.06); background: #f0f0f0; }
+.play-btn-main:active { transform: scale(0.96); }
+
+/* ── Progress bar ─────────────────────────────────────────────────────────── */
+.progress-track {
+  width: 100%;
+  height: 3px;
+  background: var(--surface-3);
+  border-radius: var(--r-full);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--text-1);
+  transition: width 0.25s linear;
+}
+.progress-track:hover .progress-fill {
+  background: var(--brand-blue);
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Album cards & interactions ─────────────────────────────────────────── */
+.album-card:hover .album-play-overlay {
+  opacity: 1 !important;
+}
+
+.album-card:hover .album-art-img {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── Selection ────────────────────────────────────────────────────────────── */
+::selection {
+  background: rgba(139, 92, 246, 0.3);
+  color: #ffffff;
+}
+
+/* ── Hide Next.js dev indicator badge ─────────────────────────────────────── */
+nextjs-portal,
+[data-nextjs-toast],
+[data-nextjs-dialog-overlay] {
+  display: none !important;
+}
+
+/* ── Expanded Player / 3D Carousel ─────────────────────────────────────── */
+
+.expanded-player-overlay {
+  animation: expandedPlayerFadeIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+@keyframes expandedPlayerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.carousel-container {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.carousel-card {
+  will-change: transform, opacity;
+}
+
+.carousel-card:hover .carousel-card-play-overlay {
+  opacity: 1 !important;
+}
+
+.carousel-bg-img {
+  will-change: opacity;
+  pointer-events: none;
+}
+
+.carousel-bg-container {
+  will-change: contents;
+}
+
