@@ -101,15 +101,26 @@ export function CoverImage({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'var(--surface-3, #262626)',
+        background: 'var(--surface-3, #18181A)',
         color: 'var(--text-3, #737373)',
-        fontSize: '18px',
+        padding: '12%',
         ...style,
       }}
       className={className}
       aria-label={alt}
     >
-      🎵
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/brand/carino-symbol.svg"
+        alt=""
+        style={{
+          width: '50%',
+          height: '50%',
+          objectFit: 'contain',
+          opacity: 0.3,
+          filter: 'grayscale(100%) brightness(1.2)',
+        }}
+      />
     </div>
   );
 

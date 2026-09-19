@@ -69,7 +69,7 @@ export default function AlbumsPage() {
       <Sidebar />
       <div className="main-area" style={{ display: 'flex', flexDirection: 'column' }}>
         <TopBar />
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px 48px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px calc(var(--player-h) + 48px)' }}>
           <div style={{ marginBottom: '24px' }}>
             <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#FFFFFF', margin: 0, letterSpacing: '-0.02em' }}>
               Albums
@@ -90,7 +90,7 @@ export default function AlbumsPage() {
               No albums found in your library.
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '24px 20px' }}>
+            <div className="library-grid-5">
               {albums.map((album) => {
                 const coverUrl = getCoverUrl(album.cover);
                 return (

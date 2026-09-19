@@ -13,6 +13,7 @@ interface LibraryStore {
   playlists: Playlist[];
   recentlyPlayed: Song[];
   favouriteSongIds: string[];
+  inFlightFavoriteIds: string[];
   userProfile: UserProfile;
 
   // ── Loading & Errors ─────────────────────────────────────────────────────────
@@ -33,8 +34,9 @@ interface LibraryStore {
   setPlaylists: (playlists: Playlist[]) => void;
   setRecentlyPlayed: (songs: Song[]) => void;
   addToRecentlyPlayed: (song: Song) => void;
-  toggleFavourite: (songId: string) => void;
+  toggleFavourite: (songId: string) => Promise<void>;
   isFavourite: (songId: string) => boolean;
+  loadFavoritesFromServer: () => Promise<void>;
   setUserProfile: (profile: Partial<UserProfile>) => void;
   setIsAccountModalOpen: (open: boolean) => void;
   setIsCockpitModalOpen: (open: boolean) => void;
@@ -94,6 +96,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   playlists: [],
   recentlyPlayed: getStoredRecentlyPlayed(),
   favouriteSongIds: getStoredFavourites(),
+  inFlightFavoriteIds: [],
   userProfile: getStoredProfile(),
   isLoadingSongs: false,
   isLoadingPlaylists: false,
@@ -122,20 +125,86 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     }
   },
 
-  toggleFavourite: (songId) => {
-    const { favouriteSongIds } = get();
+  toggleFavourite: async (songId) => {
+    const { favouriteSongIds, inFlightFavoriteIds } = get();
+    if (inFlightFavoriteIds.includes(songId)) {
+      return;
+    }
+
     const exists = favouriteSongIds.includes(songId);
     const updated = exists
       ? favouriteSongIds.filter((id) => id !== songId)
-      : [songId, ...favouriteSongIds];
-    set({ favouriteSongIds: updated });
+      : [songId, ...favouriteSongIds.filter((id) => id !== songId)];
+
+    // 1. Optimistic UI update + in-flight lock to avoid duplicate requests/races
+    set({
+      favouriteSongIds: updated,
+      inFlightFavoriteIds: [...inFlightFavoriteIds, songId],
+    });
+
     if (typeof window !== 'undefined') {
-      try { localStorage.setItem('carino_fav_song_ids', JSON.stringify(updated)); } catch {}
+      try {
+        localStorage.setItem('carino_fav_song_ids', JSON.stringify(updated));
+      } catch {}
+    }
+
+    // 2. Server persistence sync with rollback on failure
+    try {
+      const res = await fetch('/api/favorites', {
+        method: exists ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ songId }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to update favorite (${res.status})`);
+      }
+
+      const data = await res.json().catch(() => null);
+      if (data && Array.isArray(data.songIds)) {
+        set({ favouriteSongIds: data.songIds });
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('carino_fav_song_ids', JSON.stringify(data.songIds));
+          } catch {}
+        }
+      }
+    } catch (err) {
+      console.error('[libraryStore] Failed to persist favorite toggle, rolling back:', err);
+      // Restore previous state
+      set({ favouriteSongIds });
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('carino_fav_song_ids', JSON.stringify(favouriteSongIds));
+        } catch {}
+      }
+    } finally {
+      set((state) => ({
+        inFlightFavoriteIds: state.inFlightFavoriteIds.filter((id) => id !== songId),
+      }));
     }
   },
 
   isFavourite: (songId) => {
     return get().favouriteSongIds.includes(songId);
+  },
+
+  loadFavoritesFromServer: async () => {
+    try {
+      const res = await fetch('/api/favorites', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json().catch(() => null);
+      if (data && Array.isArray(data.songIds)) {
+        set({ favouriteSongIds: data.songIds });
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('carino_fav_song_ids', JSON.stringify(data.songIds));
+          } catch {}
+        }
+      }
+    } catch {
+      // Graceful fallback to client cache on network error
+    }
   },
 
   setUserProfile: (updates) => {
@@ -199,6 +268,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
       playlists: [],
       recentlyPlayed: [],
       favouriteSongIds: [],
+      inFlightFavoriteIds: [],
       userProfile: {
         name: 'Anshuman',
         avatar_url: null,

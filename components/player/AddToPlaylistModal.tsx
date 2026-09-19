@@ -369,7 +369,12 @@ export function AddToPlaylistModal({ song, isOpen, onClose }: AddToPlaylistModal
                           flexShrink: 0,
                         }}
                       >
-                        🎵
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src="/brand/carino-symbol.svg"
+                          alt=""
+                          style={{ width: '14px', height: '14px', opacity: 0.35, filter: 'grayscale(100%)' }}
+                        />
                       </div>
                       <span
                         style={{

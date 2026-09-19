@@ -455,7 +455,7 @@ function AdminDashboardContent() {
       <div className="main-area" style={{ display: 'flex', flexDirection: 'column' }}>
         <TopBar breadcrumb={[{ label: 'Admin & Library Management' }]} />
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px calc(var(--player-h) + 48px)' }}>
           {/* Toast Notification */}
           {statusMessage && (
             <div

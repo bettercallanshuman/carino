@@ -87,7 +87,7 @@ export function PlaylistsPage() {
       <Sidebar />
       <div className="main-area" style={{ display: 'flex', flexDirection: 'column' }}>
         <TopBar />
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px 48px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px calc(var(--player-h) + 48px)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
             <div>
               <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#FFFFFF', margin: 0, letterSpacing: '-0.02em' }}>
@@ -228,7 +228,12 @@ export function PlaylistsPage() {
                         marginBottom: '12px',
                       }}
                     >
-                      🎵
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/brand/carino-symbol.svg"
+                        alt=""
+                        style={{ width: '22px', height: '22px', filter: 'brightness(0)' }}
+                      />
                     </div>
                     <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
                       {pl.name}

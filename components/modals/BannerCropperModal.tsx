@@ -34,6 +34,7 @@ function BannerCropperContent({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isProcessing, setIsProcessing] = useState(false);
+  const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -112,7 +113,15 @@ function BannerCropperContent({
 
   // Render crop to 1200 x 480 canvas and export
   const handleCropAndConfirm = () => {
-    if (!imgRef.current || !containerRef.current || !file) return;
+    if (!file) return;
+
+    // Defensive passthrough: If a GIF somehow reaches the modal, never canvas-rasterize or convert to JPEG
+    if (isGif) {
+      onConfirm(file);
+      return;
+    }
+
+    if (!imgRef.current || !containerRef.current) return;
 
     setIsProcessing(true);
 
@@ -207,7 +216,7 @@ function BannerCropperContent({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px',
+        padding: 'clamp(10px, 3vw, 24px)',
       }}
       onClick={onClose}
     >
@@ -215,14 +224,16 @@ function BannerCropperContent({
         style={{
           width: '100%',
           maxWidth: '720px',
+          maxHeight: 'min(92vh, 100dvh - 20px)',
+          overflowY: 'auto',
           background: '#121214',
           border: '1px solid rgba(255, 255, 255, 0.12)',
-          borderRadius: '24px',
-          padding: '28px',
+          borderRadius: 'clamp(16px, 3vw, 24px)',
+          padding: 'clamp(16px, 3vw, 28px)',
           boxShadow: '0 32px 80px rgba(0, 0, 0, 0.8)',
           display: 'flex',
           flexDirection: 'column',
-          gap: '20px',
+          gap: 'clamp(12px, 2vw, 20px)',
         }}
         onClick={(e) => e.stopPropagation()}
         onMouseMove={handleMouseMove}
@@ -236,7 +247,11 @@ function BannerCropperContent({
               Crop & Adjust Banner {slotId ? `(Slot ${slotId})` : ''}
             </h2>
             <p style={{ fontSize: '12px', color: '#8E8E93', margin: '4px 0 0' }}>
-              Fixed aspect ratio <strong style={{ color: '#FFFFFF' }}>2.5 : 1</strong> • Output resolution <strong style={{ color: '#FFFFFF' }}>1200 × 480 px</strong>
+              {isGif ? (
+                <>Animated GIF • <strong style={{ color: '#FFFFFF' }}>Multi-frame animation preserved (Passthrough)</strong></>
+              ) : (
+                <>Fixed aspect ratio <strong style={{ color: '#FFFFFF' }}>2.5 : 1</strong> • Output resolution <strong style={{ color: '#FFFFFF' }}>1200 × 480 px</strong></>
+              )}
             </p>
           </div>
           <button
@@ -466,7 +481,7 @@ function BannerCropperContent({
               gap: '8px',
             }}
           >
-            {isProcessing ? 'Processing 1200 × 480...' : 'Confirm & Apply'}
+            {isProcessing ? 'Processing 1200 × 480...' : isGif ? 'Confirm & Upload GIF' : 'Confirm & Apply'}
           </button>
         </div>
       </div>

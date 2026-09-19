@@ -207,7 +207,7 @@ function UploadPageContent() {
       <div className="main-area" style={{ display: 'flex', flexDirection: 'column' }}>
         <TopBar breadcrumb={[{ label: 'Upload Music' }]} />
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px calc(var(--player-h) + 48px)' }}>
           <div style={{ maxWidth: '640px', margin: '0 auto' }}>
             {/* Header */}
             <div style={{ marginBottom: '28px' }}>

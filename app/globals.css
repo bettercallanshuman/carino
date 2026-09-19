@@ -44,10 +44,10 @@
 
   /* ── Layout Dimensions ────────────────────────────────────────────────── */
   --sidebar-w:              220px;
-  --right-panel-w:          330px;
+  --right-panel-w:          360px;
   --topbar-h:               60px;
-  --player-h:               76px;
-  --nav-h:                  64px;
+  --player-h:               62px;
+  --nav-h:                  60px;
 
   /* ── Spacing ──────────────────────────────────────────────────────────── */
   --sp-1:  4px;
@@ -128,12 +128,12 @@ body {
 #app-root {
   display: grid;
   grid-template-areas:
-    "sidebar main   right"
-    "player  player player";
-  grid-template-columns: var(--sidebar-w) 1fr var(--right-panel-w);
-  grid-template-rows: 1fr var(--player-h);
+    "sidebar main";
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: 1fr;
   height: 100dvh;
   overflow: hidden;
+  position: relative;
 }
 
 /* Fullscreen Auth Viewport override — prevents login from being trapped in sidebar column */
@@ -157,29 +157,80 @@ body {
   grid-row: 1 / -1 !important;
 }
 
-.sidebar-area   { grid-area: sidebar; overflow-y: auto; overflow-x: hidden; }
-.main-area      { grid-area: main;   overflow-y: auto; overflow-x: hidden; }
-.right-area     { grid-area: right;  overflow-y: auto; overflow-x: hidden; }
-.player-area    { grid-area: player; overflow: hidden; }
+.sidebar-area   { grid-area: sidebar; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; }
+.main-area      {
+  grid-area: main;
+  overflow: hidden;
+  padding-bottom: 0;
+  min-height: 0;
+  height: 100%;
+  transition: margin-right 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.right-area     { display: contents; }
+.player-area    {
+  position: fixed;
+  bottom: 24px;
+  left: calc(var(--sidebar-w) + 24px);
+  right: 24px;
+  margin: 0 auto;
+  max-width: 740px;
+  height: var(--player-h);
+  border-radius: 16px;
+  z-index: 40;
+  transition: left 0.32s cubic-bezier(0.16, 1, 0.3, 1), right 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
-/* Mobile: collapse sidebar + right panel */
+/* When Lyrics Drawer is open on desktop, main-area and MiniPlayer shift synchronously */
+@media (min-width: 901px) {
+  #app-root.drawer-open .main-area {
+    margin-right: 380px;
+  }
+  #app-root.drawer-open .player-area {
+    right: calc(380px + 24px);
+  }
+}
+
+/* Ensure inner scrollable content in main-area flows completely behind the floating MiniPlayer */
+.main-area > div[style*="overflow"] {
+  padding-bottom: calc(var(--player-h) + 48px) !important;
+}
+
+/* Mobile: collapse sidebar + dock bottom navigation */
 @media (max-width: 900px) {
   body { overflow: hidden; }
   #app-root {
     grid-template-areas:
-      "main"
-      "player"
-      "nav";
+      "main";
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr var(--player-h) var(--nav-h);
+    grid-template-rows: 1fr;
   }
   .sidebar-area  { display: none; }
-  .right-area    { display: none; }
-  .nav-area      { grid-area: nav; }
+  .right-area    { display: contents; }
+  .main-area     { padding-bottom: 0; margin-right: 0 !important; }
+  .main-area > div[style*="overflow"] {
+    padding-bottom: calc(148px + var(--safe-bottom, 0px)) !important;
+  }
+  .player-area   {
+    bottom: calc(var(--safe-bottom, 0px) + 76px);
+    left: 12px;
+    right: 12px;
+    width: calc(100% - 24px);
+    max-width: 500px;
+    transform: none;
+    margin: 0 auto;
+  }
+  .nav-area {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
 }
 
 @media (min-width: 901px) {
-  .nav-area { display: none; }
+  .nav-area, .nav-atmosphere, .nav-atmosphere-zone { display: none !important; }
 }
 
 /* ── Scrollbar ────────────────────────────────────────────────────────────── */
@@ -210,29 +261,33 @@ a {
 }
 img { display: block; max-width: 100%; }
 
-/* ── Nav item (sidebar + mobile) ──────────────────────────────────────────── */
+/* ── Nav item (Clean editorial, NO background boxes or pills) ─────────────── */
 .nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 9px 12px;
-  border-radius: 10px;
+  padding: 8px 12px;
   font-size: 13.5px;
   font-weight: 500;
   color: var(--text-3);
-  transition: all var(--t-fast);
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  transition: color var(--t-fast), opacity var(--t-fast);
   cursor: pointer;
   white-space: nowrap;
 }
 .nav-item:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.05);
+  color: #E5E5EA;
+  background: transparent !important;
 }
 .nav-item.active {
-  color: #ffffff;
-  background: #1C1C1E;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
   font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 .nav-section-label {
   font-size: 11px;
@@ -242,6 +297,66 @@ img { display: block; max-width: 100%; }
   padding: 0 12px;
   margin-top: 24px;
   margin-bottom: 8px;
+}
+
+/* ── Library Responsive 5-Column Grid ─────────────────────────────────────── */
+.library-grid-5 {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 24px 20px;
+}
+
+@media (max-width: 1024px) {
+  .library-grid-5 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .library-grid-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px 14px;
+  }
+}
+
+@media (max-width: 520px) {
+  .library-grid-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 12px;
+  }
+}
+
+/* ── White Volume Slider Knob ─────────────────────────────────────────────── */
+.volume-slider-white {
+  accent-color: #FFFFFF !important;
+}
+.volume-slider-white::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #FFFFFF !important;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  transition: transform 0.1s ease;
+}
+.volume-slider-white::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+}
+.volume-slider-white::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #FFFFFF !important;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+  transition: transform 0.1s ease;
+}
+.volume-slider-white::-moz-range-thumb:hover {
+  transform: scale(1.25);
 }
 
 /* ── Skeleton shimmer ─────────────────────────────────────────────────────── */
@@ -424,3 +539,11 @@ nextjs-portal,
   will-change: contents;
 }
 
+/* ── Scrollbar utility ────────────────────────────────────────────────────── */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLocalBanners, saveLocalBanner } from '@/lib/storage/local';
+import { getLocalBanners, saveLocalBanner, saveLocalFile } from '@/lib/storage/local';
 import { deleteServerMedia } from '@/lib/storage/serverUpload';
 import { requireAuth, requireAdmin, isAuthError } from '@/lib/auth/server';
 import { createClient } from '@/lib/supabase/server';
+import { isSupabaseConfigured } from '@/lib/supabase/songs';
 import type { Banner } from '@/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -52,6 +53,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Banner slot must be between 1 and 4' }, { status: 400 });
       }
 
+      const currentBanners = await getLocalBanners();
+      const existing = currentBanners.find((b) => b.id === id);
+
       let imageUrl: string | undefined = undefined;
       if (file && file instanceof File && file.size > 0) {
         // MIME type validation
@@ -59,49 +63,63 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: 'Uploaded file must be a valid image.' }, { status: 400 });
         }
 
-        // Upload using authenticated admin session (storage policy grants upload to public.is_admin())
-        const supabase = await createClient();
+        const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
         const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const ext = cleanName.split('.').pop() || 'jpg';
+        const rawExt = cleanName.split('.').pop()?.toLowerCase() || (isGif ? 'gif' : 'jpg');
+        const ext = isGif ? 'gif' : rawExt;
+        const fileContentType = isGif ? 'image/gif' : (file.type || 'image/jpeg');
+
         const storagePath = `banners/banner_slot_${id}_${Date.now()}.${ext}`;
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        const { error: uploadError } = await supabase.storage
-          .from('covers')
-          .upload(storagePath, buffer, {
-            contentType: file.type || 'image/jpeg',
-            upsert: true,
-          });
+        if (!isSupabaseConfigured()) {
+          const localKey = await saveLocalFile('covers', storagePath, buffer);
+          imageUrl = `/api/media?bucket=covers&path=${encodeURIComponent(localKey)}`;
+        } else {
+          try {
+            const supabase = await createClient();
+            const { error: uploadError } = await supabase.storage
+              .from('covers')
+              .upload(storagePath, buffer, {
+                contentType: fileContentType,
+                upsert: true,
+              });
 
-        if (uploadError) {
-          return NextResponse.json(
-            { error: uploadError.message || 'Failed to upload banner image' },
-            { status: 500 }
-          );
+            if (uploadError) {
+              const localKey = await saveLocalFile('covers', storagePath, buffer);
+              imageUrl = `/api/media?bucket=covers&path=${encodeURIComponent(localKey)}`;
+            } else {
+              imageUrl = `/api/media?bucket=covers&path=${encodeURIComponent(storagePath)}`;
+            }
+          } catch {
+            const localKey = await saveLocalFile('covers', storagePath, buffer);
+            imageUrl = `/api/media?bucket=covers&path=${encodeURIComponent(localKey)}`;
+          }
         }
 
-        imageUrl = `/api/media?bucket=covers&path=${encodeURIComponent(storagePath)}`;
+        imageUrl = imageUrl || `/api/media?bucket=covers&path=${encodeURIComponent(storagePath)}`;
 
         // Clean up previous banner image for this slot if it exists
         try {
-          const currentBanners = await getLocalBanners();
-          const oldBanner = currentBanners.find((b) => b.id === id);
-          if (oldBanner?.image_url && oldBanner.image_url !== imageUrl) {
-            await deleteServerMedia('covers', oldBanner.image_url);
+          if (existing?.image_url && existing.image_url !== imageUrl) {
+            await deleteServerMedia('covers', existing.image_url);
           }
         } catch {
           // ignore cleanup errors
         }
       }
 
+      const finalImageUrl = imageUrl || existing?.image_url;
+
       const updatedBanner: Banner = {
+        ...(existing || {}),
         id,
-        title: title ? title.toString().trim() : `Banner ${id}`,
-        subtitle: subtitle ? subtitle.toString().trim() : '',
-        category: category ? category.toString().trim() : 'FEATURED',
-        stats: stats ? stats.toString().trim() : '',
-        ...(imageUrl ? { image_url: imageUrl } : {}),
+        title: title !== null && title !== undefined ? title.toString().trim() : (existing?.title || `Banner ${id}`),
+        subtitle: subtitle !== null && subtitle !== undefined ? subtitle.toString().trim() : (existing?.subtitle || ''),
+        category: category !== null && category !== undefined ? category.toString().trim() : (existing?.category || 'CURATED PLAYLIST'),
+        stats: stats !== null && stats !== undefined ? stats.toString().trim() : (existing?.stats || ''),
+        ...(finalImageUrl ? { image_url: finalImageUrl } : {}),
       };
 
       const allBanners = await saveLocalBanner(updatedBanner);
@@ -115,14 +133,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid banner id (1-4 required)' }, { status: 400 });
     }
 
+    const currentBanners = await getLocalBanners();
+    const existing = currentBanners.find((b) => b.id === Number(id));
+    const finalImageUrl = image_url !== undefined ? (image_url || undefined) : existing?.image_url;
+
     const updatedBanner: Banner = {
+      ...(existing || {}),
       id: Number(id),
-      title: (title || '').trim(),
-      subtitle: (subtitle || '').trim(),
-      category: (category || '').trim(),
-      stats: (stats || '').trim(),
-      image_url: image_url || undefined,
-      gradient: gradient || undefined,
+      title: title !== undefined ? title.trim() : (existing?.title || `Banner ${id}`),
+      subtitle: subtitle !== undefined ? subtitle.trim() : (existing?.subtitle || ''),
+      category: category !== undefined ? category.trim() : (existing?.category || 'CURATED PLAYLIST'),
+      stats: stats !== undefined ? stats.trim() : (existing?.stats || ''),
+      ...(finalImageUrl ? { image_url: finalImageUrl } : {}),
+      ...(gradient !== undefined ? { gradient } : (existing?.gradient ? { gradient: existing.gradient } : {})),
     };
 
     const allBanners = await saveLocalBanner(updatedBanner);

@@ -111,6 +111,7 @@ export const AlbumCarousel = React.memo(function AlbumCarousel({
 
   const [isMobile, setIsMobile] = useState(false);
   const [windowWidth, setWindowWidth] = useState(1200);
+  const [windowHeight, setWindowHeight] = useState(800);
   const [isMounted, setIsMounted] = useState(false);
 
   // Suppress initial mount transition to prevent jump on first load
@@ -125,7 +126,9 @@ export const AlbumCarousel = React.memo(function AlbumCarousel({
   useEffect(() => {
     const check = () => {
       const w = window.innerWidth;
+      const h = window.innerHeight;
       setWindowWidth(w);
+      setWindowHeight(h);
       setIsMobile(w <= 768);
     };
     check();
@@ -134,6 +137,7 @@ export const AlbumCarousel = React.memo(function AlbumCarousel({
   }, []);
 
   const vw = windowWidth / 100;
+  const isShortScreen = windowHeight <= 500;
 
   // The visual center is derived strictly from currentTrackId
   const visualCenterIndex = centerIndex;
@@ -276,7 +280,11 @@ export const AlbumCarousel = React.memo(function AlbumCarousel({
 
   if (songs.length === 0) return null;
 
-  const cardWidth = isMobile ? 'min(220px, 52vw)' : 'min(260px, 22vw)';
+  const cardWidth = isShortScreen
+    ? 'min(150px, 32vw)'
+    : isMobile
+    ? 'min(220px, 52vw)'
+    : 'min(260px, 22vw)';
 
   return (
     <div
@@ -288,7 +296,7 @@ export const AlbumCarousel = React.memo(function AlbumCarousel({
       style={{
         position: 'relative',
         width: '100%',
-        height: isMobile ? '340px' : '420px',
+        height: isShortScreen ? '210px' : isMobile ? '340px' : '420px',
         perspective: '1200px',
         perspectiveOrigin: '50% 50%',
         display: 'flex',

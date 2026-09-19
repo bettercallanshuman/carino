@@ -144,18 +144,32 @@ export const usePlayerStore = create<PlayerStore>()(
 
     goToNext: () => {
       const { queue, queueIndex, isPlaying } = get();
-      const nextIndex = queueIndex + 1;
-      if (nextIndex >= queue.length) return;
+      if (queue.length === 0) return;
+      const nextIndex = (queueIndex + 1) % queue.length;
       const track = queue[nextIndex];
-      set({ queueIndex: nextIndex, currentTrack: track, currentTime: 0, isPlaying, playbackError: null });
+      set({
+        queueIndex: nextIndex,
+        currentTrack: track,
+        currentTime: 0,
+        seekTarget: queue.length === 1 ? 0 : null,
+        isPlaying,
+        playbackError: null,
+      });
     },
 
     goToPrevious: () => {
       const { queue, queueIndex, isPlaying } = get();
-      const prevIndex = queueIndex - 1;
-      if (prevIndex < 0) return;
+      if (queue.length === 0) return;
+      const prevIndex = queueIndex - 1 < 0 ? queue.length - 1 : queueIndex - 1;
       const track = queue[prevIndex];
-      set({ queueIndex: prevIndex, currentTrack: track, currentTime: 0, isPlaying, playbackError: null });
+      set({
+        queueIndex: prevIndex,
+        currentTrack: track,
+        currentTime: 0,
+        seekTarget: queue.length === 1 ? 0 : null,
+        isPlaying,
+        playbackError: null,
+      });
     },
 
     reset: () => set(initialState),

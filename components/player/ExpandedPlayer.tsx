@@ -38,8 +38,6 @@ export function ExpandedPlayer() {
   const duration = usePlayerStore((s) => s.duration);
   const queue = usePlayerStore((s) => s.queue);
   const repeatMode = usePlayerStore((s) => s.repeatMode);
-  const volume = usePlayerStore((s) => s.volume);
-  const muted = usePlayerStore((s) => s.muted);
 
   // Player actions
   const setIsExpanded = usePlayerStore((s) => s.setIsExpanded);
@@ -50,11 +48,9 @@ export function ExpandedPlayer() {
   const setQueue = usePlayerStore((s) => s.setQueue);
   const playTrackFromQueue = usePlayerStore((s) => s.playTrackFromQueue);
   const cycleRepeatMode = usePlayerStore((s) => s.cycleRepeatMode);
-  const setVolume = usePlayerStore((s) => s.setVolume);
-  const setMuted = usePlayerStore((s) => s.setMuted);
 
   // Library store (favorites / likes)
-  const isFavourite = useLibraryStore((s) => s.isFavourite);
+  const favouriteSongIds = useLibraryStore((s) => s.favouriteSongIds);
   const toggleFavourite = useLibraryStore((s) => s.toggleFavourite);
   const librarySongs = useLibraryStore((s) => s.songs);
 
@@ -70,7 +66,7 @@ export function ExpandedPlayer() {
   }, [currentTrack]);
 
   // Like / Favorite status
-  const isCurrentFav = currentTrack ? isFavourite(currentTrack.id) : false;
+  const isCurrentFav = currentTrack ? favouriteSongIds.includes(currentTrack.id) : false;
 
   const handleToggleFav = useCallback(() => {
     if (currentTrack) {
@@ -109,21 +105,6 @@ export function ExpandedPlayer() {
     [duration, currentTrack, seekTo]
   );
 
-  // Volume & Mute handlers
-  const handleToggleMute = useCallback(() => {
-    setMuted(!muted);
-  }, [muted, setMuted]);
-
-  const handleVolumeChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const val = Number(e.target.value) / 100;
-      if (muted) {
-        setMuted(false);
-      }
-      setVolume(val);
-    },
-    [muted, setMuted, setVolume]
-  );
 
   // Close expanded player
   const handleClose = useCallback(() => {
@@ -477,67 +458,6 @@ export function ExpandedPlayer() {
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
           </button>
-        </div>
-
-        {/* ── Subordinate Volume & Mute Row ───────────────────────────────── */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            marginBottom: '28px',
-          }}
-        >
-          <button
-            onClick={handleToggleMute}
-            aria-label={muted ? 'Unmute' : 'Mute'}
-            title={muted ? 'Unmute' : 'Mute'}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              padding: '4px',
-              color: muted ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.5)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'color 0.15s ease',
-            }}
-          >
-            {muted || volume === 0 ? (
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <line x1="23" y1="9" x2="17" y2="15" />
-                <line x1="17" y1="9" x2="23" y2="15" />
-              </svg>
-            ) : (
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-              </svg>
-            )}
-          </button>
-
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={muted ? 0 : Math.round(volume * 100)}
-            onChange={handleVolumeChange}
-            aria-label="Volume slider"
-            style={{
-              width: '150px',
-              height: '3px',
-              appearance: 'none',
-              WebkitAppearance: 'none',
-              background: 'rgba(255, 255, 255, 0.15)',
-              borderRadius: '9999px',
-              outline: 'none',
-              cursor: 'pointer',
-            }}
-          />
         </div>
       </div>
     </div>

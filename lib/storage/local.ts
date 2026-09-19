@@ -19,6 +19,7 @@ const PROFILE_FILE = path.join(STORAGE_DIR, 'profile.json');
 const ROOMS_FILE = path.join(STORAGE_DIR, 'rooms.json');
 const ROOM_MEMBERS_FILE = path.join(STORAGE_DIR, 'room_members.json');
 const ROOM_STATE_FILE = path.join(STORAGE_DIR, 'room_state.json');
+const FAVORITES_FILE = path.join(STORAGE_DIR, 'favorites.json');
 
 async function ensureDirs(bucket?: 'audio' | 'covers') {
   if (!fsSync.existsSync(STORAGE_DIR)) {
@@ -592,5 +593,64 @@ export async function updateLocalRoomState(
 
   await fs.writeFile(ROOM_STATE_FILE, JSON.stringify(all, null, 2), 'utf-8');
   return updatedState;
+}
+
+// ── Favourites Data ──────────────────────────────────────────────────────────
+
+/**
+ * Retrieves the favorite song IDs for a specific user.
+ */
+export async function getLocalFavorites(userId: string): Promise<string[]> {
+  try {
+    await ensureDirs();
+    if (!fsSync.existsSync(FAVORITES_FILE)) {
+      return [];
+    }
+    const data = await fs.readFile(FAVORITES_FILE, 'utf-8');
+    const allFavs: Record<string, string[]> = JSON.parse(data);
+    return Array.isArray(allFavs[userId]) ? allFavs[userId] : [];
+  } catch (err) {
+    console.error('[LocalStorage] Failed to read favorites:', err);
+    return [];
+  }
+}
+
+/**
+ * Persists the favorite song IDs for a specific user.
+ */
+export async function saveLocalFavorites(userId: string, songIds: string[]): Promise<string[]> {
+  try {
+    await ensureDirs();
+    let allFavs: Record<string, string[]> = {};
+    if (fsSync.existsSync(FAVORITES_FILE)) {
+      try {
+        const data = await fs.readFile(FAVORITES_FILE, 'utf-8');
+        allFavs = JSON.parse(data);
+      } catch {
+        allFavs = {};
+      }
+    }
+    const unique = Array.from(new Set(songIds));
+    allFavs[userId] = unique;
+    await fs.writeFile(FAVORITES_FILE, JSON.stringify(allFavs, null, 2), 'utf-8');
+    return unique;
+  } catch (err) {
+    console.error('[LocalStorage] Failed to save favorites:', err);
+    return songIds;
+  }
+}
+
+/**
+ * Toggles a song favorite status for a user.
+ */
+export async function toggleLocalFavorite(
+  userId: string,
+  songId: string
+): Promise<{ songIds: string[]; isFavorited: boolean }> {
+  const current = await getLocalFavorites(userId);
+  const exists = current.includes(songId);
+  const updated = exists ? current.filter((id) => id !== songId) : [songId, ...current];
+  await saveLocalFavorites(userId, updated);
+  return { songIds: updated, isFavorited: !exists };
 }
 

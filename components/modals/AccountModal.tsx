@@ -132,7 +132,7 @@ function AccountModalContent() {
         justifyContent: 'center',
         background: 'rgba(0, 0, 0, 0.75)',
         backdropFilter: 'blur(8px)',
-        padding: '20px',
+        padding: 'clamp(10px, 3vw, 20px)',
       }}
       onClick={() => setIsOpen(false)}
     >
@@ -140,10 +140,12 @@ function AccountModalContent() {
         style={{
           width: '100%',
           maxWidth: '440px',
+          maxHeight: 'min(92vh, 100dvh - 20px)',
+          overflowY: 'auto',
           background: '#121212',
           border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: '20px',
-          padding: '28px',
+          borderRadius: 'clamp(16px, 3vw, 20px)',
+          padding: 'clamp(18px, 3vw, 28px)',
           boxShadow: '0 24px 64px rgba(0, 0, 0, 0.6)',
         }}
         onClick={(e) => e.stopPropagation()}

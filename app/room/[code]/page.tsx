@@ -603,7 +603,12 @@ export default function RoomCodePage({ params }: RoomCodePageProps) {
                       color: '#636366',
                     }}
                   >
-                    <span style={{ fontSize: '48px' }}>🎵</span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/brand/carino-symbol.svg"
+                      alt=""
+                      style={{ width: '48px', height: '48px', opacity: 0.3, filter: 'grayscale(100%)' }}
+                    />
                     <span style={{ fontSize: '13px', fontWeight: 600 }}>No Track Playing</span>
                   </div>
                 )}
@@ -832,7 +837,10 @@ export default function RoomCodePage({ params }: RoomCodePageProps) {
                               {itemCover ? (
                                 <CoverImage src={itemCover} alt={song.title} fill sizes="36px" style={{ objectFit: 'cover' }} />
                               ) : (
-                                <div style={{ width: '100%', height: '100%', background: '#2C2C2E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>🎵</div>
+                                <div style={{ width: '100%', height: '100%', background: '#2C2C2E', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px' }}>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src="/brand/carino-symbol.svg" alt="" style={{ width: '16px', height: '16px', opacity: 0.3, filter: 'grayscale(100%)' }} />
+                                </div>
                               )}
                             </div>
                             <div style={{ minWidth: 0 }}>
@@ -1093,7 +1101,10 @@ export default function RoomCodePage({ params }: RoomCodePageProps) {
                             {trackCover ? (
                               <CoverImage src={trackCover} alt={track.title} fill sizes="32px" style={{ objectFit: 'cover' }} />
                             ) : (
-                              <div style={{ width: '100%', height: '100%', background: '#1C1C1E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>🎵</div>
+                              <div style={{ width: '100%', height: '100%', background: '#1C1C1E', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '5px' }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src="/brand/carino-symbol.svg" alt="" style={{ width: '14px', height: '14px', opacity: 0.3, filter: 'grayscale(100%)' }} />
+                              </div>
                             )}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>

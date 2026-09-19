@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useLibraryStore } from '@/stores/libraryStore';
-import { getAudioUrl } from '@/lib/supabase/storage';
+import { getAudioUrl, getCoverUrl } from '@/lib/supabase/storage';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CARIÑO — Single Authoritative Audio Engine with Safe Volume Fade Transitions
@@ -33,6 +33,19 @@ function fadeAudioVolume(
   isValid: () => boolean,
   onComplete?: () => void
 ): () => void {
+  // If document is hidden/backgrounded, requestAnimationFrame is suspended/throttled by browsers.
+  // Immediately apply target volume without scheduling rAF so background audio transitions remain audible.
+  if (typeof document !== 'undefined' && document.hidden) {
+    if (isValid()) {
+      const target = Math.max(0, Math.min(1, targetVolumeGetter()));
+      audio.volume = target;
+      if (onComplete) {
+        onComplete();
+      }
+    }
+    return () => {};
+  }
+
   let animFrameId: number | null = null;
   const startTime = performance.now();
   const startVol = Math.max(0, Math.min(1, fromVolume));
@@ -211,6 +224,7 @@ export function AudioEngine() {
 
   // Store subscriptions
   const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const queueIndex = usePlayerStore((state) => state.queueIndex);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const volume = usePlayerStore((state) => state.volume);
   const muted = usePlayerStore((state) => state.muted);
@@ -228,11 +242,14 @@ export function AudioEngine() {
   const setIsAudioUnlocked = usePlayerStore((state) => state.setIsAudioUnlocked);
   const setNeedsAudioUnlock = usePlayerStore((state) => state.setNeedsAudioUnlock);
   const goToNext = usePlayerStore((state) => state.goToNext);
+  const goToPrevious = usePlayerStore((state) => state.goToPrevious);
+  const seekTo = usePlayerStore((state) => state.seekTo);
 
   // Synchronization and fade tracking refs
   const volumeRef = useRef(volume);
   const mutedRef = useRef(muted);
   const currentTrackIdRef = useRef<string | null>(null);
+  const currentQueueIndexRef = useRef<number | null>(null);
   const switchTokenRef = useRef(0);
   const isSwitchingTrackRef = useRef(false);
   const isFadingRef = useRef(false);
@@ -355,31 +372,9 @@ export function AudioEngine() {
       endFadeStartedRef.current = false;
       cancelActiveFade();
 
-      const mode = usePlayerStore.getState().repeatMode;
-      if (mode === 'infinite') {
-        audio.currentTime = 0;
-        audio.volume = 0;
-        isFadingRef.current = true;
-        const token = switchTokenRef.current;
-        audio.play().then(() => {
-          activeFadeCancelRef.current = fadeAudioVolume(
-            audio,
-            0,
-            () => volumeRef.current,
-            FADE_UP_MS,
-            () => token === switchTokenRef.current,
-            () => {
-              isFadingRef.current = false;
-              audio.volume = Math.max(0, Math.min(1, volumeRef.current));
-            }
-          );
-        }).catch((err) => {
-          console.warn('[AudioEngine] Repeat infinite play failed:', err);
-          audio.volume = Math.max(0, Math.min(1, volumeRef.current));
-          isFadingRef.current = false;
-        });
-        return;
-      }
+      const player = usePlayerStore.getState();
+      const mode = player.repeatMode;
+
       if (mode === 'once') {
         audio.currentTime = 0;
         audio.volume = 0;
@@ -406,15 +401,39 @@ export function AudioEngine() {
         return;
       }
 
-      const player = usePlayerStore.getState();
-      const hasNextTrack = player.queueIndex + 1 < player.queue.length;
-      if (hasNextTrack) {
-        goToNext();
-      } else {
+      if (player.queue.length <= 1) {
+        if (player.queue.length === 1) {
+          audio.currentTime = 0;
+          audio.volume = 0;
+          isFadingRef.current = true;
+          const token = switchTokenRef.current;
+          audio.play().then(() => {
+            activeFadeCancelRef.current = fadeAudioVolume(
+              audio,
+              0,
+              () => volumeRef.current,
+              FADE_UP_MS,
+              () => token === switchTokenRef.current,
+              () => {
+                isFadingRef.current = false;
+                audio.volume = Math.max(0, Math.min(1, volumeRef.current));
+              }
+            );
+          }).catch((err) => {
+            console.warn('[AudioEngine] Single-track continuous play failed:', err);
+            audio.volume = Math.max(0, Math.min(1, volumeRef.current));
+            isFadingRef.current = false;
+          });
+          return;
+        }
         audio.volume = Math.max(0, Math.min(1, volumeRef.current));
         setIsPlaying(false);
         setAudioPaused(true);
+        return;
       }
+
+      // Normal continuous playback: circular queue wrap (1 -> 2 -> ... -> N -> 1)
+      goToNext();
     };
 
     const handleError = () => {
@@ -524,6 +543,7 @@ export function AudioEngine() {
 
     if (!currentTrack) {
       currentTrackIdRef.current = null;
+      currentQueueIndexRef.current = null;
       expectedSrcRef.current = '';
       isSwitchingTrackRef.current = false;
       cancelActiveFade();
@@ -534,12 +554,13 @@ export function AudioEngine() {
       return;
     }
 
-    // Only proceed if track identity changed
-    if (currentTrack.id === currentTrackIdRef.current) {
+    // Only proceed if track identity or queue index changed
+    if (currentTrack.id === currentTrackIdRef.current && queueIndex === currentQueueIndexRef.current) {
       return;
     }
 
     currentTrackIdRef.current = currentTrack.id;
+    currentQueueIndexRef.current = queueIndex;
     const token = ++switchTokenRef.current;
     isSwitchingTrackRef.current = true;
     endFadeStartedRef.current = false;
@@ -701,6 +722,7 @@ export function AudioEngine() {
     }
   }, [
     currentTrack,
+    queueIndex,
     setCurrentTime,
     setDuration,
     setIsPlaying,
@@ -803,6 +825,129 @@ export function AudioEngine() {
       audio.playbackRate = safeRate;
     }
   }, [playbackRate]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // E) WEB MEDIA SESSION INTEGRATION
+  // Synchronizes playbackState, track metadata, and lock-screen / OS controls
+  // with the existing single authoritative HTMLAudioElement and playerStore.
+  // ─────────────────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('mediaSession' in navigator)) {
+      return;
+    }
+
+    if (!currentTrack) {
+      navigator.mediaSession.metadata = null;
+      navigator.mediaSession.playbackState = 'none';
+      return;
+    }
+
+    const rawCover = currentTrack.cover_url || currentTrack.cover_path;
+    const coverUrl = getCoverUrl(rawCover);
+    const fullArtworkUrl =
+      coverUrl.startsWith('http://') ||
+      coverUrl.startsWith('https://') ||
+      coverUrl.startsWith('blob:') ||
+      coverUrl.startsWith('data:')
+        ? coverUrl
+        : `${window.location.origin}${coverUrl}`;
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.title || 'Unknown Track',
+        artist: currentTrack.artist || 'Cariño',
+        album: currentTrack.album || 'Cariño',
+        artwork: [
+          { src: fullArtworkUrl, sizes: '96x96' },
+          { src: fullArtworkUrl, sizes: '128x128' },
+          { src: fullArtworkUrl, sizes: '192x192' },
+          { src: fullArtworkUrl, sizes: '256x256' },
+          { src: fullArtworkUrl, sizes: '384x384' },
+          { src: fullArtworkUrl, sizes: '512x512' },
+        ],
+      });
+    } catch (err) {
+      console.warn('[AudioEngine] MediaMetadata update error:', err);
+    }
+  }, [currentTrack]);
+
+  // Synchronize Media Session playbackState strictly from actual playback state
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('mediaSession' in navigator)) {
+      return;
+    }
+
+    if (!currentTrack) {
+      navigator.mediaSession.playbackState = 'none';
+    } else {
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    }
+  }, [currentTrack, isPlaying]);
+
+  // Register Media Session OS action handlers routing directly to existing actions
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('mediaSession' in navigator)) {
+      return;
+    }
+
+    const setAction = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
+      try {
+        navigator.mediaSession.setActionHandler(action, handler);
+      } catch {
+        // Ignored if action is not supported by current browser
+      }
+    };
+
+    setAction('play', () => {
+      setIsPlaying(true);
+    });
+
+    setAction('pause', () => {
+      setIsPlaying(false);
+    });
+
+    setAction('previoustrack', () => {
+      goToPrevious();
+    });
+
+    setAction('nexttrack', () => {
+      goToNext();
+    });
+
+    setAction('seekbackward', (details) => {
+      const audio = audioRef.current;
+      const skipSec = details.seekOffset || 10;
+      const cur = audio ? audio.currentTime : usePlayerStore.getState().currentTime;
+      seekTo(Math.max(0, cur - skipSec));
+    });
+
+    setAction('seekforward', (details) => {
+      const audio = audioRef.current;
+      const skipSec = details.seekOffset || 10;
+      const cur = audio ? audio.currentTime : usePlayerStore.getState().currentTime;
+      const dur = audio && !isNaN(audio.duration) && audio.duration > 0
+        ? audio.duration
+        : usePlayerStore.getState().duration;
+      const maxTime = dur > 0 ? dur : cur + skipSec;
+      seekTo(Math.min(maxTime, cur + skipSec));
+    });
+
+    setAction('seekto', (details) => {
+      if (details.seekTime !== undefined && details.seekTime !== null && !isNaN(details.seekTime)) {
+        seekTo(Math.max(0, details.seekTime));
+      }
+    });
+
+    return () => {
+      setAction('play', null);
+      setAction('pause', null);
+      setAction('previoustrack', null);
+      setAction('nexttrack', null);
+      setAction('seekbackward', null);
+      setAction('seekforward', null);
+      setAction('seekto', null);
+    };
+  }, [setIsPlaying, goToPrevious, goToNext, seekTo]);
 
   return null;
 }

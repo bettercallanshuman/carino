@@ -81,7 +81,7 @@ export default function LibraryPage() {
       <div className="main-area" style={{ display: 'flex', flexDirection: 'column' }}>
         <TopBar breadcrumb={[{ label: 'Library' }]} />
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px calc(var(--player-h) + 48px)' }}>
           {/* Header Row */}
           <div
             style={{
@@ -223,7 +223,10 @@ export default function LibraryPage() {
                 color: 'var(--text-3)',
               }}
             >
-              <div style={{ fontSize: '36px', marginBottom: '12px' }}>🎵</div>
+              <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/brand/carino-symbol.svg" alt="" style={{ width: '40px', height: '40px', opacity: 0.35, filter: 'grayscale(100%)' }} />
+              </div>
               <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-1)', marginBottom: '6px' }}>
                 No tracks found
               </p>

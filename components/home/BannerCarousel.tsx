@@ -38,6 +38,14 @@ export function BannerCarousel() {
       }
     }
     loadBanners();
+
+    const handleBannersUpdated = () => {
+      loadBanners();
+    };
+    window.addEventListener('carino:banners-updated', handleBannersUpdated);
+    return () => {
+      window.removeEventListener('carino:banners-updated', handleBannersUpdated);
+    };
   }, []);
 
   // 4-second right-to-left slide interval
@@ -58,7 +66,8 @@ export function BannerCarousel() {
       style={{
         position: 'relative',
         width: '100%',
-        borderRadius: '24px',
+        flexShrink: 0,
+        borderRadius: 'clamp(16px, 3vw, 24px)',
         overflow: 'hidden',
         background: '#0C0C0C',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
@@ -83,12 +92,12 @@ export function BannerCarousel() {
               key={banner.id || index}
               style={{
                 width: '25%',
-                minHeight: '280px',
+                minHeight: 'clamp(180px, 30vw, 280px)',
                 position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                padding: '36px 36px',
+                padding: 'clamp(16px, 3.5vw, 36px)',
                 background: banner.gradient || 'linear-gradient(135deg, #FF5500 0%, #D84315 100%)',
                 boxSizing: 'border-box',
                 overflow: 'hidden',
@@ -122,67 +131,76 @@ export function BannerCarousel() {
 
               {/* Top Label */}
               <div style={{ position: 'relative', zIndex: 2 }}>
-                <p
-                  style={{
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    color: 'rgba(255, 255, 255, 0.85)',
-                    marginBottom: '8px',
-                  }}
-                >
-                  {banner.category || 'CURATED PLAYLIST'}
-                </p>
+                {Boolean(banner.category?.trim()) && (
+                  <p
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      color: 'rgba(255, 255, 255, 0.85)',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    {banner.category}
+                  </p>
+                )}
 
                 <h1
                   style={{
-                    fontSize: 'clamp(32px, 4vw, 52px)',
+                    fontSize: 'clamp(22px, 4vw, 48px)',
                     fontWeight: 800,
                     color: '#FFFFFF',
                     letterSpacing: '-0.03em',
-                    lineHeight: 1.05,
-                    marginBottom: '12px',
+                    lineHeight: 1.08,
+                    marginBottom: banner.subtitle?.trim() ? '10px' : '0px',
                     textShadow: '0 2px 10px rgba(0,0,0,0.3)',
+                    wordBreak: 'break-word',
                   }}
                 >
                   {banner.title}
                 </h1>
 
-                <p
-                  style={{
-                    fontSize: '13px',
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    maxWidth: '440px',
-                    lineHeight: 1.45,
-                    margin: 0,
-                  }}
-                >
-                  {banner.subtitle}
-                </p>
+                {Boolean(banner.subtitle?.trim()) && (
+                  <p
+                    style={{
+                      fontSize: '13px',
+                      color: 'rgba(255, 255, 255, 0.8)',
+                      maxWidth: '440px',
+                      lineHeight: 1.45,
+                      margin: 0,
+                    }}
+                  >
+                    {banner.subtitle}
+                  </p>
+                )}
               </div>
 
               {/* Bottom Metadata & Stats */}
-              <div
-                style={{
-                  position: 'relative',
-                  zIndex: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  marginTop: '28px',
-                  color: 'rgba(255, 255, 255, 0.9)',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                }}
-              >
-                <span style={{ color: '#FF3B30', display: 'flex', alignItems: 'center' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                  </svg>
-                </span>
-                <span>{banner.stats || '50,056 Likes • 213 Songs, 13 hr 7 min'}</span>
-              </div>
+              {Boolean(banner.stats?.trim()) ? (
+                <div
+                  style={{
+                    position: 'relative',
+                    zIndex: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginTop: '28px',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                  }}
+                >
+                  <span style={{ color: '#FF3B30', display: 'flex', alignItems: 'center' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                    </svg>
+                  </span>
+                  <span>{banner.stats}</span>
+                </div>
+              ) : (
+                <div />
+              )}
             </div>
           );
         })}

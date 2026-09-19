@@ -31,7 +31,7 @@ function TracksContent() {
   const setIsLoading = useLibraryStore((state) => state.setIsLoadingSongs);
   const searchQuery = useLibraryStore((state) => state.searchQuery);
   const setSearchQuery = useLibraryStore((state) => state.setSearchQuery);
-  const isFavourite = useLibraryStore((state) => state.isFavourite);
+  const favouriteSongIds = useLibraryStore((state) => state.favouriteSongIds);
   const toggleFavourite = useLibraryStore((state) => state.toggleFavourite);
 
   const currentTrack = usePlayerStore((state) => state.currentTrack);
@@ -81,7 +81,7 @@ function TracksContent() {
   };
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px 48px' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px calc(var(--player-h) + 48px)' }}>
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#FFFFFF', margin: 0, letterSpacing: '-0.02em' }}>
           All Tracks
@@ -106,7 +106,7 @@ function TracksContent() {
           {filteredSongs.map((song, idx) => {
             const isThisPlaying = currentTrack?.id === song.id && isPlaying;
             const coverUrl = getCoverUrl(song.cover_url || song.cover_path);
-            const fav = isFavourite(song.id);
+            const fav = favouriteSongIds.includes(song.id);
 
             return (
               <div

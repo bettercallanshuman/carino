@@ -12,7 +12,7 @@ export default function SearchPage() {
       <Sidebar />
       <div className="main-area" style={{ display: 'flex', flexDirection: 'column' }}>
         <TopBar breadcrumb={[{ label: 'Search' }]} />
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 24px calc(var(--player-h) + 48px)' }}>
           <h1 style={{ fontSize: '28px', fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--text-1)', marginBottom: '24px' }}>
             Search.
           </h1>

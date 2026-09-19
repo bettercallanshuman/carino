@@ -112,7 +112,7 @@ export default function RoomLobbyPage() {
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '40px 32px',
+            padding: '40px 32px calc(var(--player-h) + 48px)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
