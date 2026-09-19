@@ -233,10 +233,10 @@ export default function RoomCodePage({ params }: RoomCodePageProps) {
         <TopBar breadcrumb={[{ label: 'Room', href: '/room' }, { label: roomCode }]} />
 
         <div
+          className="room-scroll-container"
           style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '24px 32px 100px 32px',
             maxWidth: '1080px',
             margin: '0 auto',
             width: '100%',
@@ -270,17 +270,15 @@ export default function RoomCodePage({ params }: RoomCodePageProps) {
             <>
               {/* ── Room Top Bar ──────────────────────────────────────────────── */}
               <div
+                className="room-topbar"
                 style={{
                   display: 'flex',
                   flexWrap: 'wrap',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  gap: '16px',
-                  padding: '16px 20px',
                   borderRadius: '16px',
                   background: '#121214',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
-                  marginBottom: '28px',
                 }}
               >
                 {/* Left: Room Code & Copy Buttons */}
@@ -462,17 +460,15 @@ export default function RoomCodePage({ params }: RoomCodePageProps) {
           {/* ── CARIÑO Audio Unlock Handshake Banner ─────────────────────── */}
           {(needsAudioUnlock || (!isAudioUnlocked && !isHost && (isPlaying || roomState?.is_playing || currentTrack))) && (
             <div
+              className="room-unlock-banner"
               style={{
                 width: '100%',
-                padding: '18px 22px',
                 borderRadius: '16px',
                 background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%)',
                 border: '1px solid rgba(236, 72, 153, 0.5)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: '16px',
-                marginBottom: '24px',
                 boxShadow: '0 8px 28px rgba(236, 72, 153, 0.16)',
               }}
             >
@@ -534,25 +530,22 @@ export default function RoomCodePage({ params }: RoomCodePageProps) {
 
           {/* ── Grid: Main Stage (Left) & Room Info / Queue (Right) ────────── */}
           <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1.2fr 0.8fr',
-              gap: '24px',
-            }}
+            className="room-main-grid"
           >
             {/* ── Left Column: Now Playing Hero ────────────────────────────── */}
             <div
+              className="room-hero-card"
               style={{
                 background: '#121214',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '20px',
-                padding: '32px 28px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 textAlign: 'center',
                 position: 'relative',
                 overflow: 'hidden',
+                width: '100%',
               }}
             >
               {/* Subtle ambient glow */}
@@ -574,6 +567,7 @@ export default function RoomCodePage({ params }: RoomCodePageProps) {
                 style={{
                   width: '240px',
                   height: '240px',
+                  maxWidth: '100%',
                   borderRadius: '16px',
                   background: '#1A1A1E',
                   overflow: 'hidden',
@@ -896,14 +890,15 @@ export default function RoomCodePage({ params }: RoomCodePageProps) {
             </div>
 
             {/* ── Right Column: Partner Presence & Room Queue ──────────────── */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
               {/* Partner Presence Card */}
               <div
+                className="room-panel-card"
                 style={{
                   background: '#121214',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                   borderRadius: '18px',
-                  padding: '22px 20px',
+                  width: '100%',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -1036,14 +1031,15 @@ export default function RoomCodePage({ params }: RoomCodePageProps) {
 
               {/* Shared Room Queue Card */}
               <div
+                className="room-panel-card"
                 style={{
                   background: '#121214',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                   borderRadius: '18px',
-                  padding: '22px 20px',
                   flex: 1,
                   display: 'flex',
                   flexDirection: 'column',
+                  width: '100%',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>

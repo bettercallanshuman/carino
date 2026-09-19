@@ -254,6 +254,18 @@ To prevent re-introducing bugs that were previously resolved, keep these histori
 
 ## 8. Recent Change Ledger
 
+### 2026-09-20 — Phase 4 QA: Mobile Party Room Responsive Layout Composition Fix
+* **User Intent**: Resolve mobile party room layout defect where the Room page retained desktop 2-column geometry at mobile widths (`gridTemplateColumns: '1.2fr 0.8fr'`), causing severe horizontal overflow, squishing the Now Playing Hero card down to 86px, clipping cover art, and locking Listening Together and Shared Queue side-panels:
+  1. Responsive Composition Reflow: At `<=900px`, transformed the Room grid from a rigid 2-column layout (`1.2fr 0.8fr`) to a genuine single-column stacked layout (`grid-template-columns: 1fr`).
+  2. Mobile Vertical Stack: Sequential reflow: (1) Room Top Bar, (2) Audio Unlock Banner (if active), (3) Now Playing Hero card with centered 240px artwork and full-width scrubber, (4) Full-width Listening Together card with comfortable participant rows, (5) Full-width Shared Queue card.
+  3. Scoped Responsive Classes: Replaced rigid inline styles with `.room-scroll-container`, `.room-main-grid`, `.room-topbar`, `.room-unlock-banner`, `.room-hero-card`, and `.room-panel-card` in [app/globals.css](file:///c:/Users/iaman/carino/app/globals.css). Mobile horizontal padding set to 16px with `calc(148px + var(--safe-bottom, 0px))` bottom clearance for floating MiniPlayer and BottomNav.
+  4. Desktop Preservation: On desktop (`>900px`), the 2-column layout (`1.2fr 0.8fr` computed `580.8px 387.2px`) remains 100% pixel-identical and visually preserved.
+  5. Protected Systems: AudioEngine, playerStore, roomStore, roomSync, Supabase realtime, authentication, BottomNav.tsx, and MiniPlayer.tsx remained 100% untouched.
+* **Files Modified**:
+  * [app/globals.css](file:///c:/Users/iaman/carino/app/globals.css) (Added scoped `.room-*` responsive layout classes for desktop 2-column and mobile 1-column stack)
+  * [app/room/[code]/page.tsx](file:///c:/Users/iaman/carino/app/room/%5Bcode%5D/page.tsx) (Hooked up `.room-*` responsive classes, centered 240px cover art with `maxWidth: '100%'`, full-width responsive panel cards)
+* **Validation**: TypeScript (`npx tsc --noEmit`), ESLint (`npx eslint app/room/[code]/page.tsx`), Next.js build (`npm run build`), multi-viewport Chrome CDP screenshots across 412×924, 390×844, and 375×812 for both Creator and Participant (0 overflow detected), scrolled reflow inspection, desktop 2-column verification (1280×800), and live playback synchronization validation (Host plays -> Participant follows).
+
 ### 2026-09-20 — Phase 3A.3: Final Mobile Navigation Atmosphere Correction
 * **User Intent**: Remove the remaining visual black slab/box at the bottom of the mobile viewport and establish a true floating atmospheric lens:
   1. Extended Progressive Atmosphere Lens: Increased atmospheric lens vertical coverage to 240px from viewport bottom (`.nav-atmosphere-outer` 240px with 8px blur, `.nav-atmosphere-middle` 170px with 16px blur, and `.nav-atmosphere-inner` 100px with 24px blur).
