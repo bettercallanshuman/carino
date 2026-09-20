@@ -71,20 +71,23 @@
   --t-slow:   350ms cubic-bezier(0.4, 0, 0.2, 1);
 
   /* ── iOS safe areas ───────────────────────────────────────────────────── */
-  /* Normal browser mode (Safari, Chrome): top safe area is 0px to prevent double-offsetting */
-  --safe-top:    0px;
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* Normal browser mode (Safari, Chrome): top/nav-bottom safe areas are 0px to prevent double-offsetting */
+  --safe-top:        0px;
+  --safe-bottom:     env(safe-area-inset-bottom, 0px);
+  --safe-bottom-nav: 0px;
 }
 
 /* Standalone PWA / Web App mode: status bar overlays top viewport on installed web apps */
 @media all and (display-mode: standalone), all and (display-mode: fullscreen) {
   :root {
     --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom-nav: max(0px, calc(env(safe-area-inset-bottom, 0px) - 26px));
   }
 }
 
 :root[data-standalone="true"] {
   --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom-nav: max(0px, calc(env(safe-area-inset-bottom, 0px) - 26px));
 }
 
 /* ── Tailwind v4 theme ────────────────────────────────────────────────────── */
@@ -217,10 +220,10 @@ body {
   .right-area    { display: contents; }
   .main-area     { padding-bottom: 0; margin-right: 0 !important; }
   .main-area > div[style*="overflow"] {
-    padding-bottom: calc(148px + var(--safe-bottom, 0px)) !important;
+    padding-bottom: calc(148px + var(--safe-bottom-nav, 0px)) !important;
   }
   .player-area   {
-    bottom: calc(var(--safe-bottom, 0px) + 76px);
+    bottom: calc(var(--safe-bottom-nav, 0px) + 76px);
     left: 12px;
     right: 12px;
     width: calc(100% - 24px);
@@ -364,7 +367,7 @@ img { display: block; max-width: 100%; }
 
 @media (max-width: 900px) {
   .room-scroll-container {
-    padding: 16px 16px calc(148px + var(--safe-bottom, 0px)) 16px !important;
+    padding: 16px 16px calc(148px + var(--safe-bottom-nav, 0px)) 16px !important;
   }
   .room-main-grid {
     grid-template-columns: 1fr !important;

@@ -138,7 +138,7 @@ export function BottomNav() {
           <div
             style={{
               position: 'fixed',
-              bottom: 'calc(var(--safe-bottom, 0px) + 76px)',
+              bottom: 'calc(var(--safe-bottom-nav, 0px) + 76px)',
               right: '16px',
               width: '230px',
               background: 'rgba(18, 18, 22, 0.92)',
@@ -203,7 +203,7 @@ export function BottomNav() {
             left: 0,
             right: 0,
             width: '100%',
-            height: 'calc(var(--safe-bottom, 0px) + 165px)',
+            height: 'calc(var(--safe-bottom-nav, 0px) + 165px)',
             background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.02) 20%, rgba(255, 255, 255, 0.05) 45%, rgba(255, 255, 255, 0.08) 70%, rgba(255, 255, 255, 0.06) 100%)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
@@ -223,7 +223,7 @@ export function BottomNav() {
             left: 0,
             right: 0,
             width: '100%',
-            height: 'calc(var(--safe-bottom, 0px) + 165px)',
+            height: 'calc(var(--safe-bottom-nav, 0px) + 165px)',
             background: 'linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.02) 20%, rgba(255, 255, 255, 0.03) 40%, rgba(255, 255, 255, 0.06) 70%, rgba(255, 255, 255, 0.04) 100%)',
             backdropFilter: 'blur(24px)',
             WebkitBackdropFilter: 'blur(24px)',
@@ -241,7 +241,7 @@ export function BottomNav() {
         aria-label="Mobile Navigation"
         style={{
           position: 'fixed',
-          bottom: 'calc(var(--safe-bottom, 0px) + 12px)',
+          bottom: 'calc(var(--safe-bottom-nav, 0px) + 12px)',
           left: '16px',
           right: '16px',
           maxWidth: '500px',

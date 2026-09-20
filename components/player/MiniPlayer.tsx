@@ -132,7 +132,7 @@ export function MiniPlayer(props: MiniPlayerProps = {}) {
           padding: isMobile ? '0 10px 0 8px' : '0 16px',
           height: isMobile ? '56px' : 'var(--player-h)',
           position: 'fixed',
-          bottom: isMobile ? 'calc(var(--safe-bottom, 0px) + 76px)' : '24px',
+          bottom: isMobile ? 'calc(var(--safe-bottom-nav, 0px) + 76px)' : '24px',
           left: isMobile ? '12px' : 'calc(var(--sidebar-w) + 24px)',
           right: isMobile ? '12px' : isLyricsDrawerOpen ? 'calc(380px + 24px)' : '24px',
           margin: '0 auto',

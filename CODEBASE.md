@@ -254,6 +254,31 @@ To prevent re-introducing bugs that were previously resolved, keep these histori
 
 ## 8. Recent Change Ledger
 
+### 2026-09-20 — iOS Standalone PWA Bottom Navigation Excess Spacing Fix
+* **User Intent**: Fix excessive empty space beneath the mobile floating bottom navigation bar specifically in the installed iOS PWA, making it as visually compact as the normal Safari website while strictly respecting the iOS home indicator safe area without modifying TopBar or ExpandedPlayer safe area behavior.
+* **Root Cause**:
+  1. *Inset and Floating Margin Summation*: The floating navigation container was positioned at `bottom: calc(var(--safe-bottom, 0px) + 12px)`. In normal Safari, `env(safe-area-inset-bottom)` is `0px`, yielding `12px` from the bottom edge. In standalone PWA mode, `env(safe-area-inset-bottom)` evaluates to `34px`. Combining `34px + 12px` pushed the floating bar to `46px` from the screen bottom, leaving a 33px dead gap above the 13px home indicator.
+  2. *Full-Bleed Inset Applied to Floating Island*: iOS `safe-area-inset-bottom` (34px) was designed for docked full-bleed tab bars with built-in padding. Applying the full 34px inset on top of floating island margins lifted MiniPlayer to `110px` and scroll padding to `182px`.
+* **Architectural Fix**:
+  1. **Introduced Scoped Nav Safe Variable (`--safe-bottom-nav`)**: In [app/globals.css](file:///c:/Users/iaman/carino/app/globals.css), `--safe-bottom-nav` is initialized to `0px` in `:root` (preserving normal browser mode 100% pixel-for-pixel).
+  2. **Minimal Safe Home-Indicator Offset in Standalone Mode**: Under `@media all and (display-mode: standalone), all and (display-mode: fullscreen)` and `:root[data-standalone="true"]`, `--safe-bottom-nav` evaluates to `max(0px, calc(env(safe-area-inset-bottom, 0px) - 26px))` (= `8px` on 34px notch/island iPhones).
+  3. **Visual Alignment to Website Baseline**:
+     - BottomNav: `bottom: calc(var(--safe-bottom-nav, 0px) + 12px)` sits at `20px` in standalone PWA (Join Party sits at `27px`, giving `14px` clearance above the `13px` home indicator; Home/More text at `17px`).
+     - MiniPlayer: `bottom: calc(var(--safe-bottom-nav, 0px) + 76px)` sits at `84px`, exactly `12px` above BottomNav.
+     - Mobile main-area and room scroll padding: `calc(148px + var(--safe-bottom-nav, 0px))` sits at `156px`.
+     - Atmosphere backdrop: `calc(var(--safe-bottom-nav, 0px) + 165px)` sits at `173px`.
+  4. **Protected Systems Untouched**: `ExpandedPlayer` continues using `--safe-bottom` (`34px`), preserving its dedicated internal padding. `TopBar` and audio systems remain completely untouched.
+* **Files Modified**:
+  * [app/globals.css](file:///c:/Users/iaman/carino/app/globals.css)
+  * [components/navigation/BottomNav.tsx](file:///c:/Users/iaman/carino/components/navigation/BottomNav.tsx)
+  * [components/player/MiniPlayer.tsx](file:///c:/Users/iaman/carino/components/player/MiniPlayer.tsx)
+  * [app/page.tsx](file:///c:/Users/iaman/carino/app/page.tsx)
+  * [CODEBASE.md](file:///c:/Users/iaman/carino/CODEBASE.md)
+* **Validation**:
+  * `npx tsc --noEmit` passed with 0 errors.
+  * `npm run lint` passed with 0 errors.
+  * `npm run build` passed with 0 errors.
+
 ### 2026-09-20 — Full Performance / Load-Time Optimization (Phases A–C)
 * **User Intent**: Minimize initial load time, eliminate blank/skeleton waiting screens, maximize perceived and actual performance on physical mobile Safari and installed iOS PWA without redesigning UI or modifying protected audio/room playback systems.
 * **Root Cause**:

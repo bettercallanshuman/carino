@@ -253,7 +253,7 @@ export default function HomePage() {
               flex: 1,
               overflowY: 'auto',
               overflowX: 'hidden',
-              padding: '16px 16px calc(148px + var(--safe-bottom, 0px))',
+              padding: '16px 16px calc(148px + var(--safe-bottom-nav, 0px))',
               display: 'flex',
               flexDirection: 'column',
               gap: '28px',
