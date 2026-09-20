@@ -56,6 +56,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={dmSans.variable}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if(typeof window!=='undefined'&&window.navigator&&window.navigator.standalone){document.documentElement.dataset.standalone="true";}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body>
         <div id="app-root">
           {children}

@@ -65,6 +65,16 @@ const getStoredFavourites = (): string[] => {
   }
 };
 
+const getStoredSongs = (): Song[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem('carino_cached_songs');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
 const getStoredRecentlyPlayed = (): Song[] => {
   if (typeof window === 'undefined') return [];
   try {
@@ -92,7 +102,7 @@ const getStoredProfile = (): UserProfile => {
 };
 
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
-  songs: [],
+  songs: getStoredSongs(),
   playlists: [],
   recentlyPlayed: getStoredRecentlyPlayed(),
   favouriteSongIds: getStoredFavourites(),
@@ -106,7 +116,12 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   isAccountModalOpen: false,
   isCockpitModalOpen: false,
 
-  setSongs: (songs) => set({ songs }),
+  setSongs: (songs) => {
+    set({ songs });
+    if (typeof window !== 'undefined' && Array.isArray(songs) && songs.length > 0) {
+      try { localStorage.setItem('carino_cached_songs', JSON.stringify(songs)); } catch {}
+    }
+  },
   setPlaylists: (playlists) => set({ playlists }),
   setRecentlyPlayed: (songs) => {
     set({ recentlyPlayed: songs });

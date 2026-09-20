@@ -51,10 +51,9 @@ export function TopBar(props: TopBarProps = {}) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Sync profile and favorites from authenticated session
+  // Sync profile and favorites from authenticated session in parallel
   useEffect(() => {
-    refreshSession();
-    loadFavoritesFromServer();
+    void Promise.allSettled([refreshSession(), loadFavoritesFromServer()]);
   }, [refreshSession, loadFavoritesFromServer]);
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -75,7 +74,7 @@ export function TopBar(props: TopBarProps = {}) {
           position: 'sticky',
           top: 0,
           zIndex: 20,
-          padding: '16px 20px 14px',
+          padding: 'calc(16px + var(--safe-top, 0px)) 20px 14px',
           gap: '14px',
           borderBottom: '1px solid var(--border-subtle)',
         }}
@@ -249,11 +248,11 @@ export function TopBar(props: TopBarProps = {}) {
   return (
     <header
       style={{
-        height: 'var(--topbar-h)',
+        height: 'calc(var(--topbar-h) + var(--safe-top, 0px))',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 24px',
+        padding: 'var(--safe-top, 0px) 24px 0',
         borderBottom: '1px solid var(--border-subtle)',
         background: 'var(--bg)',
         flexShrink: 0,

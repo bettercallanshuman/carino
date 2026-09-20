@@ -133,50 +133,75 @@ export function useCatalogSync() {
     if (typeof window === 'undefined' || !isSupabaseConfigured()) return;
 
     const supabase = createClient();
-    const channel = supabase.channel(CATALOG_CHANNEL_NAME, {
-      config: { broadcast: { self: false } },
-    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let channel: any = null;
+    let isCancelled = false;
 
-    // 1. Listen for Broadcast messages
-    channel.on('broadcast', { event: 'catalog_change' }, ({ payload }) => {
-      handleIncomingCatalogEvent(payload as CatalogChangeEvent);
-    });
+    const connect = () => {
+      if (isCancelled) return;
+      channel = supabase.channel(CATALOG_CHANNEL_NAME, {
+        config: { broadcast: { self: false } },
+      });
 
-    // 2. Listen for Supabase Postgres Changes on 'public.songs' as secondary guarantee
-    channel.on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'songs' },
-      (payload) => {
-        if (payload.eventType === 'INSERT' && payload.new) {
-          handleIncomingCatalogEvent({
-            type: 'SONG_ADDED',
-            song: payload.new as Song,
-            timestamp: Date.now(),
-          });
-        } else if (payload.eventType === 'UPDATE' && payload.new) {
-          handleIncomingCatalogEvent({
-            type: 'SONG_UPDATED',
-            song: payload.new as Song,
-            timestamp: Date.now(),
-          });
-        } else if (payload.eventType === 'DELETE' && payload.old) {
-          handleIncomingCatalogEvent({
-            type: 'SONG_DELETED',
-            songId: (payload.old as { id?: string }).id || '',
-            timestamp: Date.now(),
-          });
+      // 1. Listen for Broadcast messages
+      channel.on('broadcast', { event: 'catalog_change' }, ({ payload }: { payload: CatalogChangeEvent }) => {
+        handleIncomingCatalogEvent(payload);
+      });
+
+      // 2. Listen for Supabase Postgres Changes on 'public.songs' as secondary guarantee
+      channel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'songs' },
+        (payload: { eventType: string; new?: Record<string, unknown>; old?: Record<string, unknown> }) => {
+          if (payload.eventType === 'INSERT' && payload.new) {
+            handleIncomingCatalogEvent({
+              type: 'SONG_ADDED',
+              song: payload.new as unknown as Song,
+              timestamp: Date.now(),
+            });
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            handleIncomingCatalogEvent({
+              type: 'SONG_UPDATED',
+              song: payload.new as unknown as Song,
+              timestamp: Date.now(),
+            });
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            handleIncomingCatalogEvent({
+              type: 'SONG_DELETED',
+              songId: (payload.old as { id?: string }).id || '',
+              timestamp: Date.now(),
+            });
+          }
         }
-      }
-    );
+      );
 
-    channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        // Connected to catalog realtime
-      }
-    });
+      channel.subscribe((status: string) => {
+        if (status === 'SUBSCRIBED') {
+          // Connected to catalog realtime
+        }
+      });
+    };
+
+    // Schedule realtime connection during browser idle period to keep initial paint 100% unimpeded
+    let idleId: number | NodeJS.Timeout | null = null;
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      idleId = (window as unknown as { requestIdleCallback: (fn: () => void, opts?: { timeout: number }) => number }).requestIdleCallback(connect, { timeout: 1500 });
+    } else {
+      idleId = setTimeout(connect, 600);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      isCancelled = true;
+      if (idleId !== null) {
+        if (typeof window !== 'undefined' && 'cancelIdleCallback' in window && typeof idleId === 'number') {
+          (window as unknown as { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleId);
+        } else {
+          clearTimeout(idleId as NodeJS.Timeout);
+        }
+      }
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, []);
 }

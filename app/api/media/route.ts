@@ -177,7 +177,10 @@ export async function GET(req: NextRequest) {
         if (!error && data?.signedUrl) {
           if (redirect) {
             const response = NextResponse.redirect(data.signedUrl, { status: 307 });
-            response.headers.set('Cache-Control', 'private, max-age=300');
+            const cacheHeader = bucket === 'covers'
+              ? 'private, max-age=86400, stale-while-revalidate=604800'
+              : 'private, max-age=3600';
+            response.headers.set('Cache-Control', cacheHeader);
             return response;
           }
 
@@ -200,13 +203,16 @@ export async function GET(req: NextRequest) {
           const contentType = blob.type || getMimeType(bucket, path);
           const arrayBuffer = await blob.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
+          const cacheHeader = bucket === 'covers'
+            ? 'private, max-age=86400, stale-while-revalidate=604800'
+            : 'private, max-age=3600';
 
           return new Response(buffer, {
             status: 200,
             headers: {
               'Content-Type': contentType,
               'Content-Length': String(buffer.length),
-              'Cache-Control': 'private, max-age=3600',
+              'Cache-Control': cacheHeader,
             },
           });
         }

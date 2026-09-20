@@ -197,7 +197,7 @@ export function Sidebar() {
         borderTop: '1px solid rgba(255, 255, 255, 0.04)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
         borderLeft: 'none',
-        padding: '24px 16px',
+        padding: 'calc(24px + var(--safe-top, 0px)) 16px 24px',
         userSelect: 'none',
         boxShadow: '4px 0 28px rgba(0, 0, 0, 0.45)',
         zIndex: 25,

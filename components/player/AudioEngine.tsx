@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useLibraryStore } from '@/stores/libraryStore';
 import { getAudioUrl, getCoverUrl } from '@/lib/supabase/storage';
+import type { Song } from '@/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CARIÑO — Single Authoritative Audio Engine with Safe Volume Fade Transitions
@@ -256,14 +257,162 @@ export function AudioEngine() {
   const endFadeStartedRef = useRef(false);
   const expectedSrcRef = useRef<string>('');
   const activeFadeCancelRef = useRef<(() => void) | null>(null);
+  const transitionToTrackDirectRef = useRef<((nextTrack: Song, nextIndex: number) => void) | null>(null);
+  const handlePlayErrorRef = useRef<((err: unknown, token: number) => void) | null>(null);
 
-  const cancelActiveFade = () => {
+  const cancelActiveFade = (restoreVolume = false) => {
     if (activeFadeCancelRef.current) {
       activeFadeCancelRef.current();
       activeFadeCancelRef.current = null;
     }
     isFadingRef.current = false;
+    if (restoreVolume) {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.volume = Math.max(0, Math.min(1, volumeRef.current));
+        audio.muted = mutedRef.current;
+      }
+    }
   };
+
+  const handlePlayError = (err: unknown, token: number) => {
+    if (token !== switchTokenRef.current) return;
+    isSwitchingTrackRef.current = false;
+    isFadingRef.current = false;
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = Math.max(0, Math.min(1, volumeRef.current));
+      audio.muted = mutedRef.current;
+    }
+
+    if (err instanceof Error && err.name === 'AbortError') {
+      // Aborted by subsequent track switch or pause — expected, ignore
+      return;
+    }
+
+    const isAutoplayBlocked =
+      err instanceof Error &&
+      (err.name === 'NotAllowedError' ||
+        err.message.toLowerCase().includes('user gesture') ||
+        err.message.toLowerCase().includes('interact'));
+
+    logAudioDiagnostic('PLAY_REJECTED', audio, {
+      token,
+      isAutoplayBlocked,
+      error: err instanceof Error ? err.message : String(err),
+    });
+
+    setAudioPaused(true);
+
+    if (isAutoplayBlocked) {
+      setNeedsAudioUnlock(true);
+      setIsAudioUnlocked(false);
+      usePlayerStore.getState().setSyncStatus('audio-locked');
+    } else {
+      setIsPlaying(false);
+      setPlaybackError(err instanceof Error ? err.message : 'Play request failed');
+    }
+  };
+
+  /**
+   * Directly and synchronously switches the authoritative HTMLAudioElement to a new track.
+   * Crucial for natural 'ended' transitions and lock-screen controls, ensuring the audio
+   * session is maintained continuously without React scheduler latency or rAF throttling.
+   */
+  const transitionToTrackDirect = (nextTrack: Song, nextIndex: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const token = ++switchTokenRef.current;
+    isSwitchingTrackRef.current = true;
+    endFadeStartedRef.current = false;
+    cancelActiveFade(true);
+
+    // Invalidate previous playback
+    audio.pause();
+
+    const rawSrc = nextTrack.audio_url || nextTrack.audio_path;
+    const resolvedUrl = getAudioUrl(rawSrc);
+
+    if (!resolvedUrl) {
+      console.warn('[AudioEngine] No valid audio URL for track:', nextTrack.title);
+      setPlaybackError('No audio URL found');
+      isSwitchingTrackRef.current = false;
+      return;
+    }
+
+    const fullUrl =
+      resolvedUrl.startsWith('http://') ||
+      resolvedUrl.startsWith('https://') ||
+      resolvedUrl.startsWith('blob:')
+        ? resolvedUrl
+        : `${window.location.origin}${resolvedUrl}`;
+
+    expectedSrcRef.current = fullUrl;
+
+    // Synchronous source assignment and load on the same authoritative element
+    audio.src = fullUrl;
+    audio.load();
+
+    try {
+      audio.currentTime = 0;
+    } catch {
+      // Ignored if readyState doesn't support setting currentTime yet
+    }
+    setCurrentTime(0);
+
+    if (nextTrack.duration_seconds > 0) {
+      setDuration(nextTrack.duration_seconds);
+    }
+
+    // Synchronously restore target volume — NEVER zero out volume during continuous transitions
+    const targetVol = Math.max(0, Math.min(1, volumeRef.current));
+    audio.volume = targetVol;
+    audio.muted = mutedRef.current;
+    isFadingRef.current = false;
+
+    // Update tracking refs BEFORE updating store so subsequent useEffect does not double-switch
+    currentTrackIdRef.current = nextTrack.id;
+    currentQueueIndexRef.current = nextIndex;
+
+    logAudioDiagnostic('DIRECT_SWITCH_PLAY_START', audio, {
+      token,
+      trackTitle: nextTrack.title,
+      src: fullUrl,
+      targetVolume: targetVol,
+    });
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise
+        .then(() => {
+          if (token !== switchTokenRef.current) return;
+          isSwitchingTrackRef.current = false;
+          setIsAudioUnlocked(true);
+          setNeedsAudioUnlock(false);
+          setAudioPaused(false);
+          audio.volume = Math.max(0, Math.min(1, volumeRef.current));
+          logAudioDiagnostic('DIRECT_SWITCH_PLAY_RESOLVED', audio, { token });
+        })
+        .catch((err: unknown) => {
+          if (handlePlayErrorRef.current) {
+            handlePlayErrorRef.current(err, token);
+          } else {
+            handlePlayError(err, token);
+          }
+        });
+    } else {
+      isSwitchingTrackRef.current = false;
+    }
+
+    // Synchronously update store state
+    usePlayerStore.getState().playTrackFromQueue(nextIndex);
+  };
+
+  useEffect(() => {
+    transitionToTrackDirectRef.current = transitionToTrackDirect;
+    handlePlayErrorRef.current = handlePlayError;
+  });
 
   useEffect(() => {
     volumeRef.current = volume;
@@ -282,6 +431,15 @@ export function AudioEngine() {
     audio.preload = 'auto';
     audioRef.current = audio;
     authoritativeAudioElement = audio;
+
+    // Safari 16.4+ Audio Session API declaration: ensure dedicated media playback session
+    if (typeof navigator !== 'undefined' && 'audioSession' in navigator) {
+      try {
+        (navigator as unknown as { audioSession: { type: string } }).audioSession.type = 'playback';
+      } catch (err) {
+        console.warn('[AudioEngine] audioSession configuration error:', err);
+      }
+    }
 
     const handleLoadStart = () => {
       setIsBuffering(true);
@@ -337,7 +495,7 @@ export function AudioEngine() {
       }
       setAudioPaused(audio.paused);
 
-      // Natural end-of-track fade: begin fading down during final ~750ms
+      // Natural end-of-track fade: begin fading down during final ~750ms (foreground only)
       const remaining = audio.duration - audio.currentTime;
       if (
         usePlayerStore.getState().isPlaying &&
@@ -345,7 +503,9 @@ export function AudioEngine() {
         remaining > 0 &&
         remaining <= END_FADE_SECONDS &&
         !endFadeStartedRef.current &&
-        !isSwitchingTrackRef.current
+        !isSwitchingTrackRef.current &&
+        typeof document !== 'undefined' &&
+        !document.hidden
       ) {
         endFadeStartedRef.current = true;
         isFadingRef.current = true;
@@ -370,70 +530,41 @@ export function AudioEngine() {
 
     const handleEnded = () => {
       endFadeStartedRef.current = false;
-      cancelActiveFade();
+      cancelActiveFade(true);
 
       const player = usePlayerStore.getState();
       const mode = player.repeatMode;
 
       if (mode === 'once') {
-        audio.currentTime = 0;
-        audio.volume = 0;
-        isFadingRef.current = true;
-        const token = switchTokenRef.current;
-        audio.play().then(() => {
-          activeFadeCancelRef.current = fadeAudioVolume(
-            audio,
-            0,
-            () => volumeRef.current,
-            FADE_UP_MS,
-            () => token === switchTokenRef.current,
-            () => {
-              isFadingRef.current = false;
-              audio.volume = Math.max(0, Math.min(1, volumeRef.current));
-            }
-          );
-        }).catch((err) => {
-          console.warn('[AudioEngine] Repeat once play failed:', err);
-          audio.volume = Math.max(0, Math.min(1, volumeRef.current));
-          isFadingRef.current = false;
-        });
+        const current = player.currentTrack;
+        if (current) {
+          transitionToTrackDirectRef.current?.(current, player.queueIndex);
+        }
         usePlayerStore.getState().setRepeatMode('off');
         return;
       }
 
       if (player.queue.length <= 1) {
         if (player.queue.length === 1) {
-          audio.currentTime = 0;
-          audio.volume = 0;
-          isFadingRef.current = true;
-          const token = switchTokenRef.current;
-          audio.play().then(() => {
-            activeFadeCancelRef.current = fadeAudioVolume(
-              audio,
-              0,
-              () => volumeRef.current,
-              FADE_UP_MS,
-              () => token === switchTokenRef.current,
-              () => {
-                isFadingRef.current = false;
-                audio.volume = Math.max(0, Math.min(1, volumeRef.current));
-              }
-            );
-          }).catch((err) => {
-            console.warn('[AudioEngine] Single-track continuous play failed:', err);
-            audio.volume = Math.max(0, Math.min(1, volumeRef.current));
-            isFadingRef.current = false;
-          });
+          const current = player.queue[0];
+          if (current) {
+            transitionToTrackDirectRef.current?.(current, 0);
+          }
           return;
         }
         audio.volume = Math.max(0, Math.min(1, volumeRef.current));
+        audio.muted = mutedRef.current;
         setIsPlaying(false);
         setAudioPaused(true);
         return;
       }
 
-      // Normal continuous playback: circular queue wrap (1 -> 2 -> ... -> N -> 1)
-      goToNext();
+      // Normal continuous playback: circular queue wrap (0 -> 1 -> ... -> N-1 -> 0)
+      const nextIndex = (player.queueIndex + 1) % player.queue.length;
+      const nextTrack = player.queue[nextIndex];
+      if (nextTrack) {
+        transitionToTrackDirectRef.current?.(nextTrack, nextIndex);
+      }
     };
 
     const handleError = () => {
@@ -567,8 +698,15 @@ export function AudioEngine() {
     cancelActiveFade();
 
     const trackToLoad = currentTrack;
-    // Determine whether a fade-down is beneficial (audio was playing audibly)
-    const shouldFadeDown = Boolean(usePlayerStore.getState().isPlaying && !audio.paused && audio.src && audio.volume > 0.05);
+    const isHidden = typeof document !== 'undefined' && document.hidden;
+    // Determine whether a fade-down is beneficial (audio was playing audibly in foreground)
+    const shouldFadeDown = Boolean(
+      usePlayerStore.getState().isPlaying &&
+      !audio.paused &&
+      audio.src &&
+      audio.volume > 0.05 &&
+      !isHidden
+    );
 
     const executeSwitch = () => {
       if (token !== switchTokenRef.current) return;
@@ -626,7 +764,41 @@ export function AudioEngine() {
         return;
       }
 
-      // 6. Playing track: start at silence and fade UP to logical volume preference
+      if (isHidden) {
+        // In background: immediately apply target volume and play without rAF fade
+        audio.volume = Math.max(0, Math.min(1, volumeRef.current));
+        audio.muted = mutedRef.current;
+        isFadingRef.current = false;
+
+        logAudioDiagnostic('TRACK_SWITCH_PLAY_BACKGROUND', audio, {
+          token,
+          trackTitle: trackToLoad.title,
+          src: fullUrl,
+          targetVolume: volumeRef.current,
+        });
+
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              if (token !== switchTokenRef.current) return;
+              isSwitchingTrackRef.current = false;
+              setIsAudioUnlocked(true);
+              setNeedsAudioUnlock(false);
+              setAudioPaused(false);
+              audio.volume = Math.max(0, Math.min(1, volumeRef.current));
+              logAudioDiagnostic('TRACK_SWITCH_PLAY_RESOLVED', audio, { token });
+            })
+            .catch((err: unknown) => {
+              handlePlayErrorRef.current?.(err, token);
+            });
+        } else {
+          isSwitchingTrackRef.current = false;
+        }
+        return;
+      }
+
+      // 6. Foreground playing track: start at silence and fade UP to logical volume preference
       audio.volume = 0;
       audio.muted = mutedRef.current;
       isFadingRef.current = true;
@@ -665,38 +837,7 @@ export function AudioEngine() {
             );
           })
           .catch((err: unknown) => {
-            if (token !== switchTokenRef.current) return;
-            isSwitchingTrackRef.current = false;
-            isFadingRef.current = false;
-            audio.volume = Math.max(0, Math.min(1, volumeRef.current));
-
-            if (err instanceof Error && err.name === 'AbortError') {
-              // Aborted by subsequent track switch or pause — ignore
-              return;
-            }
-
-            const isAutoplayBlocked =
-              err instanceof Error &&
-              (err.name === 'NotAllowedError' ||
-                err.message.toLowerCase().includes('user gesture') ||
-                err.message.toLowerCase().includes('interact'));
-
-            logAudioDiagnostic('TRACK_SWITCH_PLAY_REJECTED', audio, {
-              token,
-              isAutoplayBlocked,
-              error: err instanceof Error ? err.message : String(err),
-            });
-
-            setAudioPaused(true);
-
-            if (isAutoplayBlocked) {
-              setNeedsAudioUnlock(true);
-              setIsAudioUnlocked(false);
-              usePlayerStore.getState().setSyncStatus('audio-locked');
-            } else {
-              setIsPlaying(false);
-              setPlaybackError(err instanceof Error ? err.message : 'Play request failed');
-            }
+            handlePlayErrorRef.current?.(err, token);
           });
       } else {
         isSwitchingTrackRef.current = false;
@@ -907,11 +1048,27 @@ export function AudioEngine() {
     });
 
     setAction('previoustrack', () => {
-      goToPrevious();
+      const { queue, queueIndex } = usePlayerStore.getState();
+      if (queue.length === 0) return;
+      const prevIndex = queueIndex - 1 < 0 ? queue.length - 1 : queueIndex - 1;
+      const prevTrack = queue[prevIndex];
+      if (prevTrack && transitionToTrackDirectRef.current) {
+        transitionToTrackDirectRef.current(prevTrack, prevIndex);
+      } else {
+        goToPrevious();
+      }
     });
 
     setAction('nexttrack', () => {
-      goToNext();
+      const { queue, queueIndex } = usePlayerStore.getState();
+      if (queue.length === 0) return;
+      const nextIndex = (queueIndex + 1) % queue.length;
+      const nextTrack = queue[nextIndex];
+      if (nextTrack && transitionToTrackDirectRef.current) {
+        transitionToTrackDirectRef.current(nextTrack, nextIndex);
+      } else {
+        goToNext();
+      }
     });
 
     setAction('seekbackward', (details) => {

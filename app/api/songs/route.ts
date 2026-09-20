@@ -36,17 +36,12 @@ export async function GET(req: NextRequest) {
     const songs = songsData as Song[];
     const expiresIn = 86400; // 24 hours pre-signed URLs
 
-    // Batch generate signed URLs for private covers and audio
+    // Batch generate signed URLs for private covers ONLY (audio remains strictly lazy on play)
     const coverPaths = songs
       .map((s) => s.cover_path?.trim())
       .filter((p): p is string => Boolean(p && !p.startsWith('http://') && !p.startsWith('https://') && !p.startsWith('/')));
 
-    const audioPaths = songs
-      .map((s) => s.audio_path?.trim())
-      .filter((p): p is string => Boolean(p && !p.startsWith('http://') && !p.startsWith('https://') && !p.startsWith('/')));
-
     const coverMap = new Map<string, string>();
-    const audioMap = new Map<string, string>();
 
     if (coverPaths.length > 0) {
       const cleanCoverPaths = Array.from(new Set(coverPaths.map((p) => p.replace(/^\/+/, ''))));
@@ -56,17 +51,6 @@ export async function GET(req: NextRequest) {
 
       signedCovers?.forEach((item) => {
         if (item.signedUrl && item.path) coverMap.set(item.path, item.signedUrl);
-      });
-    }
-
-    if (audioPaths.length > 0) {
-      const cleanAudioPaths = Array.from(new Set(audioPaths.map((p) => p.replace(/^\/+/, ''))));
-      const { data: signedAudio } = await supabase.storage
-        .from('audio')
-        .createSignedUrls(cleanAudioPaths, expiresIn);
-
-      signedAudio?.forEach((item) => {
-        if (item.signedUrl && item.path) audioMap.set(item.path, item.signedUrl);
       });
     }
 
@@ -85,18 +69,15 @@ export async function GET(req: NextRequest) {
         }
       }
 
+      // Audio is strictly lazy-loaded on playback demand via the authorized media proxy
       const rawAudio = s.audio_path?.trim() || '';
       const cleanAudio = rawAudio.replace(/^\/+/, '');
-      let resolvedAudio = audioMap.get(cleanAudio);
+      let resolvedAudio = '';
 
-      if (!resolvedAudio) {
-        if (rawAudio.startsWith('http://') || rawAudio.startsWith('https://') || rawAudio.startsWith('/')) {
-          resolvedAudio = rawAudio;
-        } else if (cleanAudio) {
-          resolvedAudio = `/api/media?bucket=audio&path=${encodeURIComponent(cleanAudio)}`;
-        } else {
-          resolvedAudio = '';
-        }
+      if (rawAudio.startsWith('http://') || rawAudio.startsWith('https://') || rawAudio.startsWith('/')) {
+        resolvedAudio = rawAudio;
+      } else if (cleanAudio) {
+        resolvedAudio = `/api/media?bucket=audio&path=${encodeURIComponent(cleanAudio)}`;
       }
 
       return {

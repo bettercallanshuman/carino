@@ -2,16 +2,27 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { Sidebar } from '@/components/navigation/Sidebar';
 import { TopBar } from '@/components/navigation/TopBar';
 import { BottomNav } from '@/components/navigation/BottomNav';
 import { MiniPlayer } from '@/components/player/MiniPlayer';
-import { ExpandedPlayer } from '@/components/player/ExpandedPlayer';
 import { RightPanel } from '@/components/home/RightPanel';
 import { BannerCarousel } from '@/components/home/BannerCarousel';
-import { AccountModal } from '@/components/modals/AccountModal';
-import { CockpitModal } from '@/components/modals/CockpitModal';
 import { CoverImage } from '@/components/ui/CoverImage';
+
+const ExpandedPlayer = dynamic(
+  () => import('@/components/player/ExpandedPlayer').then((m) => m.ExpandedPlayer),
+  { ssr: false }
+);
+const AccountModal = dynamic(
+  () => import('@/components/modals/AccountModal').then((m) => m.AccountModal),
+  { ssr: false }
+);
+const CockpitModal = dynamic(
+  () => import('@/components/modals/CockpitModal').then((m) => m.CockpitModal),
+  { ssr: false }
+);
 import { getSongs } from '@/lib/supabase/songs';
 import { getCoverUrl } from '@/lib/supabase/storage';
 import { useCatalogSync } from '@/lib/realtime/catalogSync';
@@ -34,11 +45,13 @@ function SongCard({
   onPlay,
   isPlayingThis,
   width,
+  priority = false,
 }: {
   song: Song;
   onPlay: () => void;
   isPlayingThis: boolean;
   width?: string | number;
+  priority?: boolean;
 }) {
   const coverUrl = getCoverUrl(song.cover_url || song.cover_path);
 
@@ -74,6 +87,7 @@ function SongCard({
           src={coverUrl}
           alt={song.title}
           fill
+          priority={priority}
           sizes={width ? `${width}px` : '(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw'}
           style={{ objectFit: 'cover' }}
         />
@@ -189,31 +203,29 @@ export default function HomePage() {
     hasLoadedRef.current = true;
 
     async function loadData() {
-      setIsLoading(true);
+      // Only trigger loading skeletons if there are no cached songs in warm storage
+      if (useLibraryStore.getState().songs.length === 0) {
+        setIsLoading(true);
+      }
       try {
-        const loadedSongs = await getSongs();
-        setSongs(loadedSongs);
+        const [loadedSongs, playlistRes] = await Promise.all([
+          getSongs(),
+          fetch('/api/playlists').then((r) => (r.ok ? r.json() : [])).catch(() => []),
+        ]);
+        if (Array.isArray(loadedSongs) && loadedSongs.length > 0) {
+          setSongs(loadedSongs);
+        }
+        if (Array.isArray(playlistRes) && playlistRes.length > 0) {
+          setPlaylists(playlistRes);
+        }
+      } catch (err) {
+        console.warn('[HomePage] Data load failed:', err);
       } finally {
         setIsLoading(false);
       }
     }
     loadData();
-  }, [setSongs, setIsLoading]);
-
-  useEffect(() => {
-    async function loadPlaylists() {
-      try {
-        const res = await fetch('/api/playlists');
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) setPlaylists(data);
-        }
-      } catch (err) {
-        console.warn('Failed to load playlists:', err);
-      }
-    }
-    loadPlaylists();
-  }, [setPlaylists]);
+  }, [setSongs, setIsLoading, setPlaylists]);
 
   const favouriteSongs = songs.filter((s) => favouriteSongIds.includes(s.id));
 
@@ -313,6 +325,7 @@ export default function HomePage() {
                       key={song.id}
                       song={song}
                       width={140}
+                      priority={idx < 4}
                       onPlay={() => handlePlaySong(song, idx, songs)}
                       isPlayingThis={currentTrack?.id === song.id && isPlaying}
                     />
@@ -660,6 +673,7 @@ export default function HomePage() {
                     <SongCard
                       key={song.id}
                       song={song}
+                      priority={idx < 5}
                       onPlay={() => handlePlaySong(song, idx)}
                       isPlayingThis={currentTrack?.id === song.id && isPlaying}
                     />

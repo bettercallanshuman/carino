@@ -20,13 +20,17 @@ export interface Song {
 
 export interface Banner {
   id: number;
+  stable_id?: string;
+  slot?: number;
   title: string;
   subtitle: string;
   category?: string;
   stats?: string;
   gradient?: string;
+  image_path?: string | null;
   image_url?: string;
   link_url?: string;
+  updated_at?: string;
 }
 
 export interface UserProfile {

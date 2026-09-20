@@ -146,7 +146,7 @@ export function ExpandedPlayer() {
           justifyContent: 'center',
           width: '100%',
           height: '100%',
-          padding: '20px',
+          padding: 'calc(20px + var(--safe-top, 0px)) 20px calc(20px + var(--safe-bottom, 0px))',
           gap: '0',
         }}
       >
@@ -154,7 +154,7 @@ export function ExpandedPlayer() {
         <div
           style={{
             position: 'absolute',
-            top: '16px',
+            top: 'calc(16px + var(--safe-top, 0px))',
             right: '20px',
             zIndex: 30,
           }}

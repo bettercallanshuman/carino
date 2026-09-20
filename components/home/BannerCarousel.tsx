@@ -16,8 +16,22 @@ import { DEFAULT_BANNERS } from '@/lib/constants/defaults';
 
 export const RECOMMENDED_BANNER_RESOLUTION = '1200 x 480 px (Aspect Ratio 2.5:1)';
 
+const getStoredBanners = (): Banner[] => {
+  if (typeof window === 'undefined') return DEFAULT_BANNERS;
+  try {
+    const raw = localStorage.getItem('carino_cached_banners');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length === 4) return parsed;
+    }
+    return DEFAULT_BANNERS;
+  } catch {
+    return DEFAULT_BANNERS;
+  }
+};
+
 export function BannerCarousel() {
-  const [banners, setBanners] = useState<Banner[]>(DEFAULT_BANNERS);
+  const [banners, setBanners] = useState<Banner[]>(getStoredBanners);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -31,6 +45,7 @@ export function BannerCarousel() {
           const data = await res.json();
           if (Array.isArray(data) && data.length === 4) {
             setBanners(data);
+            try { localStorage.setItem('carino_cached_banners', JSON.stringify(data)); } catch {}
           }
         }
       } catch (err) {
@@ -103,18 +118,37 @@ export function BannerCarousel() {
                 overflow: 'hidden',
               }}
             >
-              {/* Background Image if uploaded */}
+              {/* Background Image if uploaded (Slide 0 uses high-priority img tag for instant LCP) */}
               {hasCustomImage && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    backgroundImage: `url(${banner.image_url})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    zIndex: 0,
-                  }}
-                />
+                index === 0 ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={banner.image_url}
+                    alt={banner.title}
+                    fetchPriority="high"
+                    decoding="sync"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      objectPosition: 'center',
+                      zIndex: 0,
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      backgroundImage: `url(${banner.image_url})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      zIndex: 0,
+                    }}
+                  />
+                )
               )}
 
               {/* Gradient Overlay for legibility */}

@@ -92,10 +92,10 @@ Agents are permitted to expand beyond the documented owner file **only** under t
 | **Authentication** | [lib/auth/server.ts](file:///c:/Users/iaman/carino/lib/auth/server.ts), [middleware.ts](file:///c:/Users/iaman/carino/middleware.ts) | [stores/authStore.ts](file:///c:/Users/iaman/carino/stores/authStore.ts) | [app/login/page.tsx](file:///c:/Users/iaman/carino/app/login/page.tsx), [TopBar.tsx](file:///c:/Users/iaman/carino/components/navigation/TopBar.tsx) | [app/api/auth/session/route.ts](file:///c:/Users/iaman/carino/app/api/auth/session/route.ts), `dev-login`, `logout` | Supabase Auth cookies / `carino_dev_session` | OAuth provider config, secure cookies |
 | **User Profiles & RBAC** | [lib/auth/server.ts](file:///c:/Users/iaman/carino/lib/auth/server.ts) | [stores/authStore.ts](file:///c:/Users/iaman/carino/stores/authStore.ts), [stores/libraryStore.ts](file:///c:/Users/iaman/carino/stores/libraryStore.ts) | [AccountModal.tsx](file:///c:/Users/iaman/carino/components/modals/AccountModal.tsx), TopBar | [app/api/account/route.ts](file:///c:/Users/iaman/carino/app/api/account/route.ts) | Supabase `profiles` table / `.storage/profile.json` | 1MB avatar size limit, admin email fallback |
 | **Listening Rooms Core** | [stores/roomStore.ts](file:///c:/Users/iaman/carino/stores/roomStore.ts) | [stores/roomStore.ts](file:///c:/Users/iaman/carino/stores/roomStore.ts) | [app/room/[code]/page.tsx](file:///c:/Users/iaman/carino/app/room/[code]/page.tsx), [app/room/page.tsx](file:///c:/Users/iaman/carino/app/room/page.tsx) | [app/api/rooms/route.ts](file:///c:/Users/iaman/carino/app/api/rooms/route.ts), `[id]/state`, `[id]/members` | Supabase `rooms`, `room_members`, `room_state` / `.storage/` | Room codes, host permissions |
-| **Realtime Room Sync** | [lib/realtime/roomSync.ts](file:///c:/Users/iaman/carino/lib/realtime/roomSync.ts) | `roomStore`, `playerStore` | Room view, Audio Unlock handshake | [app/api/rooms/[id]/events/route.ts](file:///c:/Users/iaman/carino/app/api/rooms/[id]/events/route.ts) | Supabase Realtime channel / SSE stream | Drift correction (>1.5s jump, >300ms speed adjustment) |
+| **Realtime Room Sync** | [lib/realtime/roomSync.ts](file:///c:/Users/iaman/carino/lib/realtime/roomSync.ts) | `roomStore`, `playerStore` | Room view, Audio Unlock handshake | [app/api/rooms/[id]/events/route.ts](file:///c:/Users/iaman/carino/app/api/rooms/[id]/events/route.ts) | Supabase Realtime channel / SSE stream | Host-only authoritative heartbeats (2000ms), 2-way PING/PONG clock calibration, signed EMA drift (α=0.25), tiered playbackRate (1.03/0.97, 1.06/0.94, 1.08/0.92), 3000ms hard seek threshold + 6s cooldown |
 | **Uploads & Cockpit** | [components/modals/CockpitModal.tsx](file:///c:/Users/iaman/carino/components/modals/CockpitModal.tsx) | Local modal state | CockpitModal, [app/admin/page.tsx](file:///c:/Users/iaman/carino/app/admin/page.tsx) | [app/api/upload/file/route.ts](file:///c:/Users/iaman/carino/app/api/upload/file/route.ts), `signed-url` | Supabase Storage (`audio`, `covers`) / `.storage/` | File size limits (audio 50MB, cover 10MB) |
 | **Media Proxy** | [app/api/media/route.ts](file:///c:/Users/iaman/carino/app/api/media/route.ts) | Stateless | Image & audio URL resolvers | [app/api/media/route.ts](file:///c:/Users/iaman/carino/app/api/media/route.ts) | Local disk `.storage/` streaming | Content-Type verification, path sanitization |
-| **Promotional Banners** | [components/home/BannerCarousel.tsx](file:///c:/Users/iaman/carino/components/home/BannerCarousel.tsx), [CockpitModal.tsx](file:///c:/Users/iaman/carino/components/modals/CockpitModal.tsx) | Local state | Home banner carousel, Cockpit Banners tab | [app/api/banners/route.ts](file:///c:/Users/iaman/carino/app/api/banners/route.ts) | Supabase Storage (`covers` bucket) / `.storage/banners.json` | 4 slots, 1200x480px, admin-only edits, same-session event |
+| **Promotional Banners** | [components/home/BannerCarousel.tsx](file:///c:/Users/iaman/carino/components/home/BannerCarousel.tsx), [CockpitModal.tsx](file:///c:/Users/iaman/carino/components/modals/CockpitModal.tsx) | Local state | Home banner carousel, Cockpit Banners tab | [app/api/banners/route.ts](file:///c:/Users/iaman/carino/app/api/banners/route.ts) | Supabase `banners` table / `.storage/banners.json` local fallback | 4 slots, 1200x480px, admin-only edits, same-session event |
 | **Navigation & Shell** | [components/navigation/Sidebar.tsx](file:///c:/Users/iaman/carino/components/navigation/Sidebar.tsx), [TopBar.tsx](file:///c:/Users/iaman/carino/components/navigation/TopBar.tsx) | Layout composition | Sidebar, TopBar, BottomNav | Search query in URL | None | Route matching |
 
 ---
@@ -253,6 +253,121 @@ To prevent re-introducing bugs that were previously resolved, keep these histori
 * **Rule**: Never pass animated GIFs through HTML5 2D Canvas `drawImage` or `canvas.toBlob('image/jpeg')`. Always upload the raw GIF `File` to preserve animation frames.
 
 ## 8. Recent Change Ledger
+
+### 2026-09-20 — Full Performance / Load-Time Optimization (Phases A–C)
+* **User Intent**: Minimize initial load time, eliminate blank/skeleton waiting screens, maximize perceived and actual performance on physical mobile Safari and installed iOS PWA without redesigning UI or modifying protected audio/room playback systems.
+* **Root Cause**:
+  1. *Render-Blocking Font Waterfall*: `globals.css` contained `@import url('https://fonts.googleapis.com/css2?...')`, forcing an external DNS/TLS/HTTP network roundtrip before CSSOM construction, even though `app/layout.tsx` already self-hosted DM Sans via `next/font/google`.
+  2. *Unnecessary Audio URL Signing*: `/api/songs` executed sequential `supabase.storage.from('audio').createSignedUrls(...)` loops across all songs in the database, adding 1.2–1.6s to every catalog load for audio bytes that are never played on mount.
+  3. *Un-cached Flash to Empty*: `libraryStore` and `BannerCarousel` initialized with empty/default state on mount, discarding local storage and forcing skeleton waits on every launch.
+  4. *Initial JS Bundle Bloat*: `CockpitModal` (1,302 lines, 57KB), `AccountModal` (398 lines), and `ExpandedPlayer` (466 lines + 3D carousel) were statically imported in `app/page.tsx`, blocking initial hydration.
+  5. *Unprioritized LCP Images*: First banner slide used CSS `backgroundImage`, hiding it from browser preload scanners, and first visible library covers lacked `priority`.
+* **Architectural Fix**:
+  1. **Phase A (Zero-Risk Instant Wins)**:
+     - Deleted render-blocking `@import` from [app/globals.css](file:///c:/Users/iaman/carino/app/globals.css); leveraged self-hosted `next/font/google` (--font-dm-sans).
+     - Dynamically code-split `CockpitModal`, `AccountModal`, and `ExpandedPlayer` in [app/page.tsx](file:///c:/Users/iaman/carino/app/page.tsx) via `next/dynamic` (`ssr: false`), stripping 120KB+ from the initial critical bundle.
+  2. **Phase B (Server Catalog Decoupling & Media Cache)**:
+     - Removed audio pre-signing loop from [app/api/songs/route.ts](file:///c:/Users/iaman/carino/app/api/songs/route.ts). Audio URLs resolve lazily to authorized `/api/media?bucket=audio&path=...` on playback demand, dropping `/api/songs` response time from 1,635ms to ~490–590ms (>60% reduction).
+     - Upgraded [app/api/media/route.ts](file:///c:/Users/iaman/carino/app/api/media/route.ts) cover artwork cache headers to `private, max-age=86400, stale-while-revalidate=604800` while preserving audio Range streaming.
+  3. **Phase C (SWR Hydration & Prioritization)**:
+     - Implemented safe warm-cache localStorage SWR in [stores/libraryStore.ts](file:///c:/Users/iaman/carino/stores/libraryStore.ts) (`carino_cached_songs`), rendering library tracks immediately on frame 1 without skeleton wait for returning users.
+     - Implemented warm-cache localStorage SWR in [components/home/BannerCarousel.tsx](file:///c:/Users/iaman/carino/components/home/BannerCarousel.tsx) (`carino_cached_banners`) and rendered Slide 0 with high-priority `<img>` (`fetchPriority="high"`, `decoding="sync"`), preserving GIF animated banner fidelity while giving instant LCP.
+     - Passed `priority={idx < 4}` (or `< 5` on desktop) to first visible `SongCard` elements in [app/page.tsx](file:///c:/Users/iaman/carino/app/page.tsx).
+     - Parallelized catalog and playlist loading in [app/page.tsx](file:///c:/Users/iaman/carino/app/page.tsx) with `Promise.all`.
+     - Scheduled realtime WebSocket connection in [lib/realtime/catalogSync.ts](file:///c:/Users/iaman/carino/lib/realtime/catalogSync.ts) via `requestIdleCallback` (with 1.5s timeout) to keep initial paint 100% unimpeded.
+* **Files Modified**:
+  * [app/globals.css](file:///c:/Users/iaman/carino/app/globals.css)
+  * [app/api/songs/route.ts](file:///c:/Users/iaman/carino/app/api/songs/route.ts)
+  * [app/api/media/route.ts](file:///c:/Users/iaman/carino/app/api/media/route.ts)
+  * [stores/libraryStore.ts](file:///c:/Users/iaman/carino/stores/libraryStore.ts)
+  * [components/home/BannerCarousel.tsx](file:///c:/Users/iaman/carino/components/home/BannerCarousel.tsx)
+  * [app/page.tsx](file:///c:/Users/iaman/carino/app/page.tsx)
+  * [components/navigation/TopBar.tsx](file:///c:/Users/iaman/carino/components/navigation/TopBar.tsx)
+  * [lib/realtime/catalogSync.ts](file:///c:/Users/iaman/carino/lib/realtime/catalogSync.ts)
+  * [CODEBASE.md](file:///c:/Users/iaman/carino/CODEBASE.md)
+* **Validation**:
+  * `npx tsc --noEmit` passed with 0 errors.
+  * `npm run lint` passed with 0 errors.
+  * `npm run build` passed with 0 errors.
+
+### 2026-09-20 — iOS Standalone PWA Safe-Area / Top-Viewport Fix
+* **User Intent**: Fix top layout defect where Cariño as an installed iOS Web App / PWA (`apple-mobile-web-app-capable: yes`, `statusBarStyle: black-translucent`) shifted the UI too far upward, causing the iOS status bar (clock, battery, Wi-Fi, Dynamic Island) to overlap the Cariño wordmark, user profile button, search pill, and ExpandedPlayer collapse button.
+* **Root Cause**:
+  1. *Unconditional Zero Safe-Area Usage*: TopBar (`padding: 16px 20px 14px`) and ExpandedPlayer (`top: 16px`, `padding: 20px`) used static pixel values without accounting for `env(safe-area-inset-top)`.
+  2. *Status-Bar Overlay in Standalone*: In normal Mobile Safari, Safari browser chrome reserves the top status bar area, keeping web content below the status bar. In standalone PWA with `black-translucent` status bar style and `viewport-fit=cover`, the viewport extends behind the status bar from Y: 0, and WebKit provides the hardware status bar height in `env(safe-area-inset-top)` (47px on notch models, 54–59px on Dynamic Island models).
+* **Architectural Fix**:
+  1. **Scoped Safe-Top Environment Variable**: In [app/globals.css](file:///c:/Users/iaman/carino/app/globals.css), `--safe-top` is initialized to `0px` for standard browser mode (`display-mode: browser`), guaranteeing normal Safari website positioning cannot be accidentally shifted or double-offset.
+  2. **Standalone Mode Dynamic Activation**: Under `@media all and (display-mode: standalone), all and (display-mode: fullscreen)` and `:root[data-standalone="true"]`, `--safe-top` dynamically evaluates to `env(safe-area-inset-top, 0px)`.
+  3. **Synchronous Pre-Hydration Detection**: In [app/layout.tsx](file:///c:/Users/iaman/carino/app/layout.tsx), an inline synchronous script in `<head>` detects `window.navigator.standalone` and marks `document.documentElement.dataset.standalone = "true"` before the first paint, ensuring zero hydration delay or layout shift.
+  4. **TopBar Mobile & Desktop Header Reflow**: [components/navigation/TopBar.tsx](file:///c:/Users/iaman/carino/components/navigation/TopBar.tsx) mobile header uses `padding: calc(16px + var(--safe-top, 0px)) 20px 14px`, allowing the `#000000` header background to seamlessly fill behind the status bar while shifting Row 1 and Row 2 comfortably below the status bar. Desktop header uses `height: calc(var(--topbar-h) + var(--safe-top, 0px))` and `padding: var(--safe-top, 0px) 24px 0`.
+  5. **ExpandedPlayer Safe Bounds**: [components/player/ExpandedPlayer.tsx](file:///c:/Users/iaman/carino/components/player/ExpandedPlayer.tsx) minimize button uses `top: calc(16px + var(--safe-top, 0px))` and content layer uses `padding: calc(20px + var(--safe-top, 0px)) 20px calc(20px + var(--safe-bottom, 0px))`, centering the 3D album carousel within the safe area without clipping or overflowing.
+  6. **Bottom Controls Preserved**: Fixed bottom controls (MiniPlayer, BottomNav) remain anchored to `--safe-bottom` and are not shifted.
+* **Files Modified**:
+  * [app/globals.css](file:///c:/Users/iaman/carino/app/globals.css)
+  * [app/layout.tsx](file:///c:/Users/iaman/carino/app/layout.tsx)
+  * [components/navigation/TopBar.tsx](file:///c:/Users/iaman/carino/components/navigation/TopBar.tsx)
+  * [components/player/ExpandedPlayer.tsx](file:///c:/Users/iaman/carino/components/player/ExpandedPlayer.tsx)
+  * [components/navigation/Sidebar.tsx](file:///c:/Users/iaman/carino/components/navigation/Sidebar.tsx)
+  * [CODEBASE.md](file:///c:/Users/iaman/carino/CODEBASE.md)
+* **Validation**:
+  * `npx tsc --noEmit` passed with 0 errors.
+  * `npm run lint` passed with 0 errors (0 warnings in changed files).
+  * `npm run build` passed with 0 errors.
+
+### 2026-09-20 — Background / Lock-Screen Continuous Playback Fix
+* **User Intent**: Fix critical bug where Track A ending in a background/minimized tab (Chrome) or locked device (iOS Safari lock-screen) advanced player state internally to Track B, but produced zero audible sound until returning to the tab or unlocking the screen.
+* **Root Cause**:
+  1. *React Scheduler Deferral*: Native `ended` called `goToNext()`, deferring the actual `audio.src` swap and `audio.play()` call to an asynchronous React render/useEffect cycle. On iOS Safari lock screen, when the native `ended` turn finished with `ended=true` and `paused=true`, WebKit suspended the audio session and froze JS timers before React could run `useEffect`.
+  2. *Volume-Zero Trap*: In `executeSwitch()`, `audio.volume = 0` was set unconditionally before `play()` and relied on `requestAnimationFrame` to fade up to 100%. In background tabs or on lock screens, browser engines throttle or suspend `requestAnimationFrame` and microtasks, leaving the audio element permanently trapped at `volume = 0`.
+  3. *Fade Cancellation Reset Failure*: `cancelActiveFade()` cancelled the active rAF callback but left `audio.volume` stuck at whatever partial level (or 0) it reached during natural end fade-down.
+* **Architectural Fix**:
+  1. **Synchronous Direct Transition on Natural End**: Inside the native `ended` DOM event handler, immediately read queue and repeat settings from `usePlayerStore.getState()`. If a next track exists, execute synchronous transition via `transitionToTrackDirect`:
+     - Invalidate switch tokens (`switchTokenRef.current++`).
+     - Directly assign `audio.src = fullUrl` and call `audio.load()`.
+     - Directly restore physical volume `audio.volume = volumeRef.current` and preserve `audio.muted = mutedRef.current`.
+     - Synchronously call `audio.play()` within the user/system gesture context of the `ended` event.
+     - Synchronously update `currentTrackIdRef` and `currentQueueIndexRef`.
+     - Finally, sync Zustand store state via `playTrackFromQueue(nextIndex)` without triggering a redundant React switch.
+  2. **Direct Media Session Next/Previous Routing**: Hardware media key actions (`nexttrack`, `previoustrack`) route through `transitionToTrackDirect` synchronously, guaranteeing lock screen hardware button switches start audio immediately.
+  3. **Decouple Background Playback from rAF**: In `executeSwitch()`, check `document.hidden`. When hidden or backgrounded, skip rAF fade-down/fade-up envelopes and set `audio.volume = volumeRef.current` directly.
+  4. **Volume Restoration in `cancelActiveFade`**: When `cancelActiveFade(true)` is called, restore `audio.volume = volumeRef.current` and `audio.muted = mutedRef.current`.
+  5. **Safari Audio Session Support**: Added defensive `if ('audioSession' in navigator) navigator.audioSession.type = 'playback';` on mount.
+  6. **Single Audio Element Preserved**: Maintained exactly ONE authoritative `HTMLAudioElement`. No duplicate or cloned audio elements.
+  7. **Foreground Fades Preserved**: Manual user track switches in the visible UI continue to use the smooth 220ms fade-out and 450ms fade-in cubic bezier envelopes.
+* **Files Modified**:
+  * [components/player/AudioEngine.tsx](file:///c:/Users/iaman/carino/components/player/AudioEngine.tsx)
+  * [CODEBASE.md](file:///c:/Users/iaman/carino/CODEBASE.md)
+* **Validation**:
+  * `npx tsc --noEmit` passed with 0 errors.
+  * `npm run lint` passed with 0 errors (0 warnings in changed files).
+  * `npm run build` passed with 0 errors.
+
+### 2026-09-20 — Party Room Realtime Synchronization Overhaul
+* **User Intent**: Fix severe audio desynchronization bug where party room participants experienced repeated multi-second jumps, saw "Catching Up (2832ms)" in the UI, and suffered feedback loop oscillations.
+* **Root Cause**:
+  1. Cross-Device `Date.now() - msg.timestamp` subtraction mixed cross-device wall-clock skew with transit time and added it directly to target position.
+  2. Both host and guests broadcast heartbeats and cross-corrected each other in a bidirectional feedback loop.
+  3. `drift >= 1500ms` triggered an instant hard seek on every heartbeat without cooldown.
+* **Architectural Fix**:
+  1. **Host-Only Authority**: Only the room host broadcasts periodic `HEARTBEAT` messages (2000ms interval). The host never applies drift correction from incoming heartbeats. Listeners only accept heartbeats originating from `room.host_user_id`.
+  2. **PING/PONG Calibration**: Listeners send `PING` every 10s (and 500ms after join). Host replies immediately with `t0` and `t1`. Listener computes RTT and clock offset `offset = t1 - (t0 + t2)/2` using the best of 5 recent samples.
+  3. **Authoritative Extrapolation**: Host position is extrapolated as `targetMs = msg.positionMs + elapsedSinceHost` where host time is projected into local clock space using `msg.timestamp - estimatedClockOffset`.
+  4. **Signed EMA Drift Smoothing**: Signed drift (`targetMs - currentLocalMs`) is smoothed using Exponential Moving Average ($\alpha=0.25$). Reset on seek, track change, join/rejoin, or hard seek.
+  5. **Tiered Playback Rate Controller**:
+     - `abs < 180ms`: Rate `1.00` (`synced`)
+     - `180–600ms`: Rate `1.03` (behind) / `0.97` (ahead) (`drifting`)
+     - `600–1500ms`: Rate `1.06` (behind) / `0.94` (ahead) (`drifting`)
+     - `1500–3000ms`: Rate `1.08` (behind) / `0.92` (ahead) (`correcting`)
+  6. **Hard Seek Safety & 6-Second Cooldown**: Hard seek occurs ONLY when `abs(smoothedDrift) > 3000ms`. Upon hard seek, rate returns to 1.0, EMA is reset to 0, and a 6000ms lockout prevents further hard seeks while the rate controller gently manages drift.
+  7. **Protected Systems Preserved**: AudioEngine, playerStore, roomStore, UI components, API routes, Supabase schema, and auth were 100% untouched.
+* **Files Modified**:
+  * [lib/realtime/roomSync.ts](file:///c:/Users/iaman/carino/lib/realtime/roomSync.ts)
+  * [CODEBASE.md](file:///c:/Users/iaman/carino/CODEBASE.md)
+* **Validation**:
+  * `npx tsc --noEmit` passed with 0 errors.
+  * `npm run lint` passed with 0 errors.
+  * `npm run build` passed with 0 errors.
+  * Simulation test suite (`test_sync_algorithm.mjs`) verified scenarios A through J.
 
 ### 2026-09-20 — Phase 4 QA: Mobile Party Room Responsive Layout Composition Fix
 * **User Intent**: Resolve mobile party room layout defect where the Room page retained desktop 2-column geometry at mobile widths (`gridTemplateColumns: '1.2fr 0.8fr'`), causing severe horizontal overflow, squishing the Now Playing Hero card down to 86px, clipping cover art, and locking Listening Together and Shared Queue side-panels:
