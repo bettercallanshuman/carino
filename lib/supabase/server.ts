@@ -65,16 +65,22 @@ export async function createAdminClient() {
   );
 }
 
+// Check whether a valid, non-dummy Supabase Service Role Key is configured in environment variables
+export function isServiceRoleConfigured(): boolean {
+  const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return Boolean(
+    rawKey &&
+    !rawKey.includes('your-service-role') &&
+    rawKey !== 'your-service-role-key-here'
+  );
+}
+
 // Headless admin client using service role key (no cookies required)
 // Used for backend storage URL signing, signed upload tokens, and automated tasks
 export function getServiceRoleClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const isRealServiceKey = Boolean(
-    rawKey &&
-    !rawKey.includes('your-service-role') &&
-    rawKey !== 'your-service-role-key-here'
-  );
+  const isRealServiceKey = isServiceRoleConfigured();
   const key = isRealServiceKey
     ? rawKey!
     : (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');

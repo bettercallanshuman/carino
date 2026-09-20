@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getServiceRoleClient, isServiceRoleConfigured } from '@/lib/supabase/server';
 import { isSupabaseConfigured } from '@/lib/supabase/songs';
 import { getLocalSongs, saveLocalSong } from '@/lib/storage/local';
 import { requireAuth, requireAdmin, isAuthError } from '@/lib/auth/server';
@@ -117,8 +117,8 @@ export async function POST(req: NextRequest) {
     const cleanCoverPath = (cover_path || '').trim();
     const cleanAudioPath = audio_path.trim();
 
-    // In local development without Supabase configured:
-    if (!isSupabaseConfigured()) {
+    // In local development without Supabase configured or in local dev mode without service role key:
+    if (!isSupabaseConfigured() || (adminRes.isDev && !isServiceRoleConfigured())) {
       const resolvedCoverUrl =
         cleanCoverPath.startsWith('http://') ||
         cleanCoverPath.startsWith('https://') ||
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ song: mockSong });
     }
 
-    const supabase = await createClient();
+    const supabase = isServiceRoleConfigured() ? getServiceRoleClient() : await createClient();
     
     // Prepare song payload
     const songPayload: Record<string, unknown> = {
