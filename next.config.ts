@@ -19,6 +19,7 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  allowedDevOrigins: ['192.168.1.4', 'localhost', '127.0.0.1'],
   // Turbopack config — required in Next.js 16 when using webpack plugins like next-pwa
   turbopack: {},
   typescript: {
