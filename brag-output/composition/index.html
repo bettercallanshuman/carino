@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Cariño — Together, apart.</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..800;1,9..40,300..800&family=Playfair+Display:ital,wght@1,400;1,600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      *, *::before, *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html, body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #000000;
+        font-family: 'DM Sans', -apple-system, system-ui, sans-serif;
+        color: #FFFFFF;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #000000;
+      }
+
+      /* Film Grain & Vignette Overlay */
+      .cinematic-vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.85) 100%);
+        z-index: 2;
+      }
+
+      .ambient-glow-mesh {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background: radial-gradient(circle at 50% 45%, rgba(236, 72, 153, 0.08) 0%, rgba(139, 92, 246, 0.04) 35%, rgba(0, 0, 0, 0) 70%);
+        z-index: 1;
+        opacity: 0.8;
+      }
+
+      /* Base clip scene styling */
+      .clip.scene {
+        position: absolute;
+        inset: 0;
+        width: 1920px;
+        height: 1080px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* Scene 1: Hook */
+      .hook-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 32px;
+      }
+
+      .brand-symbol-wrapper {
+        position: relative;
+        width: 140px;
+        height: 140px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .symbol-glow {
+        position: absolute;
+        width: 240px;
+        height: 240px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(236, 72, 153, 0.35) 0%, rgba(139, 92, 246, 0.15) 50%, transparent 70%);
+        filter: blur(28px);
+        opacity: 0.6;
+      }
+
+      .brand-symbol-svg {
+        position: relative;
+        width: 120px;
+        height: 120px;
+        filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.4));
+      }
+
+      .hook-line-1, .hook-line-2, .hook-line-3 {
+        font-size: 56px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        font-weight: 300;
+        line-height: 1.2;
+      }
+
+      .hook-line-1 { color: #FFFFFF; }
+      .hook-line-2 { color: #A1A1AA; font-weight: 300; }
+      .hook-line-3 {
+        color: #FFFFFF;
+        font-weight: 700;
+        letter-spacing: 0.22em;
+        margin-top: 8px;
+        text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+      }
+
+      /* Scene 2: Private Room & Connection */
+      .room-card-container {
+        width: 980px;
+        background: rgba(14, 14, 14, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 28px;
+        padding: 56px 64px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(40px);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card-ambient-light {
+        position: absolute;
+        top: -120px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 500px;
+        height: 250px;
+        background: radial-gradient(ellipse, rgba(236, 72, 153, 0.2) 0%, transparent 70%);
+        filter: blur(40px);
+        pointer-events: none;
+      }
+
+      .room-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 18px;
+        border-radius: 9999px;
+        background: rgba(236, 72, 153, 0.12);
+        border: 1px solid rgba(236, 72, 153, 0.3);
+        color: #F472B6;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 24px;
+      }
+
+      .room-badge-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #EC4899;
+        box-shadow: 0 0 12px #EC4899;
+      }
+
+      .room-title {
+        font-size: 40px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: #FFFFFF;
+        margin-bottom: 12px;
+        text-align: center;
+      }
+
+      .room-desc {
+        font-size: 18px;
+        color: #A1A1AA;
+        text-align: center;
+        max-width: 620px;
+        line-height: 1.5;
+        margin-bottom: 40px;
+      }
+
+      .code-display-row {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 44px;
+      }
+
+      .code-char-box {
+        width: 72px;
+        height: 88px;
+        border-radius: 16px;
+        background: #141416;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 38px;
+        font-weight: 800;
+        color: #FFFFFF;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        letter-spacing: -0.02em;
+        position: relative;
+      }
+
+      .presence-sync-section {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-top: 32px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .user-pill {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .user-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: 700;
+        color: #FFFFFF;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      }
+
+      .avatar-anshuman {
+        background: linear-gradient(135deg, #FF5500 0%, #D84315 100%);
+      }
+
+      .avatar-carino {
+        background: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%);
+      }
+
+      .user-meta-name {
+        font-size: 17px;
+        font-weight: 700;
+        color: #FFFFFF;
+      }
+
+      .user-meta-role {
+        font-size: 13px;
+        color: #A1A1AA;
+      }
+
+      .sync-connector {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .sync-pulse-line {
+        width: 220px;
+        height: 3px;
+        background: linear-gradient(90deg, #FF5500, #EC4899, #8B5CF6);
+        border-radius: 2px;
+        box-shadow: 0 0 16px rgba(236, 72, 153, 0.6);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .sync-status-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: rgba(74, 222, 128, 0.1);
+        border: 1px solid rgba(74, 222, 128, 0.25);
+        border-radius: 9999px;
+        color: #4ADE80;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      .sync-badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #4ADE80;
+        box-shadow: 0 0 8px #4ADE80;
+      }
+
+      /* Scene 3: 3D Album Carousel & MiniPlayer */
+      .stage-3d-wrapper {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .carousel-3d-scene {
+        perspective: 1400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: -60px;
+        position: relative;
+        width: 1200px;
+        height: 480px;
+      }
+
+      .ambient-album-glow {
+        position: absolute;
+        width: 580px;
+        height: 580px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(236, 72, 153, 0.35) 0%, rgba(139, 92, 246, 0.15) 45%, transparent 70%);
+        filter: blur(60px);
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      .card-3d {
+        position: absolute;
+        width: 420px;
+        height: 420px;
+        border-radius: 24px;
+        overflow: hidden;
+        background: #141416;
+        box-shadow: 0 32px 80px rgba(0, 0, 0, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transform-style: preserve-3d;
+      }
+
+      .card-3d img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .card-3d-left {
+        left: 80px;
+        transform: translate3d(0, 0, -180px) rotateY(32deg) scale(0.78);
+        opacity: 0.55;
+        z-index: 2;
+        filter: brightness(0.6);
+      }
+
+      .card-3d-center {
+        z-index: 10;
+        transform: translate3d(0, 0, 60px) rotateY(0deg) scale(1);
+        box-shadow: 0 40px 100px rgba(0, 0, 0, 0.9), 0 0 60px rgba(236, 72, 153, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .card-3d-right {
+        right: 80px;
+        transform: translate3d(0, 0, -180px) rotateY(-32deg) scale(0.78);
+        opacity: 0.55;
+        z-index: 2;
+        filter: brightness(0.6);
+      }
+
+      .track-meta-title-box {
+        position: absolute;
+        top: 610px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 6px;
+        z-index: 20;
+      }
+
+      .track-headline {
+        font-size: 34px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: #FFFFFF;
+      }
+
+      .track-artist {
+        font-size: 18px;
+        color: #A1A1AA;
+        font-weight: 500;
+      }
+
+      /* Floating MiniPlayer */
+      .floating-player-bar {
+        position: absolute;
+        bottom: 60px;
+        width: 860px;
+        height: 76px;
+        background: rgba(18, 18, 20, 0.88);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        padding: 0 24px;
+        gap: 20px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(30px);
+        z-index: 30;
+      }
+
+      .player-thumb {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        overflow: hidden;
+        flex-shrink: 0;
+      }
+
+      .player-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .player-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        width: 170px;
+      }
+
+      .player-info-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #FFFFFF;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .player-info-artist {
+        font-size: 12px;
+        color: #A1A1AA;
+      }
+
+      .player-controls {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .ctrl-icon {
+        color: #A1A1AA;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .play-circle {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: #FFFFFF;
+        color: #000000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 16px rgba(255, 255, 255, 0.3);
+      }
+
+      .scrub-timeline {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .scrub-track-bg {
+        width: 100%;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 2px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .scrub-fill {
+        height: 100%;
+        width: 42%;
+        background: #FFFFFF;
+        border-radius: 2px;
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+      }
+
+      .scrub-time-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: #A1A1AA;
+        font-family: monospace;
+      }
+
+      .drift-indicator-pill {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        border-radius: 9999px;
+        background: rgba(74, 222, 128, 0.12);
+        border: 1px solid rgba(74, 222, 128, 0.3);
+        color: #4ADE80;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+
+      /* Scene 4: Outro */
+      .outro-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 28px;
+      }
+
+      .outro-emblem-large {
+        width: 160px;
+        height: 160px;
+        filter: drop-shadow(0 0 40px rgba(255, 255, 255, 0.35));
+      }
+
+      .outro-wordmark {
+        font-size: 76px;
+        font-weight: 800;
+        letter-spacing: 0.28em;
+        text-transform: uppercase;
+        color: #FFFFFF;
+        margin-left: 0.28em; /* optical balance for wide tracking */
+      }
+
+      .outro-tagline {
+        font-family: 'Playfair Display', serif;
+        font-size: 38px;
+        font-style: italic;
+        font-weight: 400;
+        color: #E4E4E7;
+        letter-spacing: 0.04em;
+      }
+
+      .outro-url-badge {
+        margin-top: 12px;
+        display: inline-flex;
+        align-items: center;
+        padding: 10px 24px;
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #D1D1D6;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="20"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- Audio Soundtrack -->
+      <audio
+        id="bgm"
+        data-start="0"
+        data-duration="20"
+        data-volume="0.9"
+        src="assets/music/soundtrack.mp3"
+      ></audio>
+
+      <!-- SFX tracks -->
+      <audio
+        id="sfx-tick"
+        data-start="5.2"
+        data-duration="0.32"
+        data-volume="0.35"
+        src="assets/sfx/click.ogg"
+      ></audio>
+      <audio
+        id="sfx-lock"
+        data-start="7.6"
+        data-duration="0.37"
+        data-volume="0.45"
+        src="assets/sfx/lock.ogg"
+      ></audio>
+
+      <!-- Cinematic Ambience -->
+      <div class="ambient-glow-mesh" data-layout-allow-occlusion></div>
+      <div class="cinematic-vignette" data-layout-allow-occlusion></div>
+
+      <!-- ═══════════════════════════════════════════════════════════════════════
+           SCENE 1 — THE HOOK: MILES APART (0.0s – 4.5s)
+      ════════════════════════════════════════════════════════════════════════ -->
+      <div
+        id="scene-1"
+        class="clip scene"
+        data-start="0"
+        data-duration="4.5"
+        data-track-index="0"
+      >
+        <div class="hook-container">
+          <div class="brand-symbol-wrapper" id="hook-symbol">
+            <div class="symbol-glow" data-layout-allow-overflow></div>
+            <img
+              src="assets/brand/carino-symbol.svg"
+              class="brand-symbol-svg"
+              alt="Cariño Emblem"
+            />
+          </div>
+          <div id="hook-text-group">
+            <div class="hook-line-1" id="hook-line-1">Two people.</div>
+            <div class="hook-line-2" id="hook-line-2">Miles apart.</div>
+            <div class="hook-line-3" id="hook-line-3">One song.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════════════════
+           SCENE 2 — THE PRIVATE ROOM & CONNECTION (4.5s – 9.2s)
+      ════════════════════════════════════════════════════════════════════════ -->
+      <div
+        id="scene-2"
+        class="clip scene"
+        data-start="4.5"
+        data-duration="4.7"
+        data-track-index="0"
+      >
+        <div class="room-card-container" id="room-card">
+          <div class="card-ambient-light" data-layout-allow-overflow></div>
+          
+          <div class="room-badge" id="room-badge">
+            <span class="room-badge-dot"></span>
+            Realtime Synchronized Listening
+          </div>
+
+          <h2 class="room-title" id="room-title">Listen Together In Perfect Sync</h2>
+          <p class="room-desc" id="room-desc">
+            A private space for two. Playback, pause, and seek locked in sub-millisecond precision.
+          </p>
+
+          <div class="code-display-row" id="code-row">
+            <div class="code-char-box" id="code-c">C</div>
+            <div class="code-char-box" id="code-a">A</div>
+            <div class="code-char-box" id="code-r">R</div>
+            <div class="code-char-box" id="code-i">I</div>
+            <div class="code-char-box" id="code-n">N</div>
+            <div class="code-char-box" id="code-o">O</div>
+          </div>
+
+          <div class="presence-sync-section" id="presence-section">
+            <div class="user-pill" id="user-anshuman">
+              <div class="user-avatar avatar-anshuman">A</div>
+              <div>
+                <div class="user-meta-name">Anshuman</div>
+                <div class="user-meta-role">Host · Mumbai</div>
+              </div>
+            </div>
+
+            <div class="sync-connector" id="sync-connector">
+              <div class="sync-pulse-line"></div>
+              <div class="sync-status-badge" id="sync-status-pill">
+                <span class="sync-badge-dot"></span>
+                Connected · 0ms drift
+              </div>
+            </div>
+
+            <div class="user-pill" id="user-carino">
+              <div class="user-avatar avatar-carino">C</div>
+              <div>
+                <div class="user-meta-name">Cariño</div>
+                <div class="user-meta-role">Partner · In Sync</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════════════════
+           SCENE 3 — THE 3D MUSIC EXPERIENCE (9.2s – 16.0s)
+      ════════════════════════════════════════════════════════════════════════ -->
+      <div
+        id="scene-3"
+        class="clip scene"
+        data-start="9.2"
+        data-duration="6.8"
+        data-track-index="0"
+      >
+        <div class="stage-3d-wrapper">
+          <div class="ambient-album-glow" id="ambient-glow"></div>
+
+          <!-- 3D Carousel of real tracks from Cariño catalog -->
+          <div class="carousel-3d-scene" id="carousel-scene">
+            <div class="card-3d card-3d-left" id="card-left">
+              <img src="assets/images/kaafi-hai-na.webp" alt="Kaafi Hai Na" />
+            </div>
+
+            <div class="card-3d card-3d-center" id="card-center">
+              <img src="assets/images/darmiyaan.webp" alt="Darmiyaan" />
+            </div>
+
+            <div class="card-3d card-3d-right" id="card-right">
+              <img src="assets/images/kaahe-mose.webp" alt="Kaahe Mose" />
+            </div>
+          </div>
+
+          <!-- Centered Track Metadata -->
+          <div class="track-meta-title-box" id="track-meta">
+            <h3 class="track-headline">Darmiyaan</h3>
+            <p class="track-artist">Rekha Bhardwaj &amp; Raghav Kaushik · Musafir Cafe</p>
+          </div>
+
+          <!-- Signature Floating MiniPlayer -->
+          <div class="floating-player-bar" id="floating-player">
+            <div class="player-thumb">
+              <img src="assets/images/darmiyaan.webp" alt="Cover" />
+            </div>
+
+            <div class="player-info">
+              <div class="player-info-title">Darmiyaan</div>
+              <div class="player-info-artist">Rekha Bhardwaj</div>
+            </div>
+
+            <div class="player-controls">
+              <!-- Previous SVG -->
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="ctrl-icon">
+                <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+              </svg>
+
+              <!-- Play Circle -->
+              <div class="play-circle">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              </div>
+
+              <!-- Next SVG -->
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="ctrl-icon">
+                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/>
+              </svg>
+            </div>
+
+            <div class="scrub-timeline">
+              <div class="scrub-track-bg">
+                <div class="scrub-fill" id="player-scrub-fill"></div>
+              </div>
+              <div class="scrub-time-row">
+                <span id="player-time-curr">1:14</span>
+                <span>2:55</span>
+              </div>
+            </div>
+
+            <div class="drift-indicator-pill" id="player-drift-pill">
+              <span class="sync-badge-dot"></span>
+              0ms drift
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════════════════
+           SCENE 4 — THE RESOLUTION: CARIÑO (16.0s – 20.0s)
+      ════════════════════════════════════════════════════════════════════════ -->
+      <div
+        id="scene-4"
+        class="clip scene"
+        data-start="16.0"
+        data-duration="4.0"
+        data-track-index="0"
+      >
+        <div class="outro-container">
+          <img
+            src="assets/brand/carino-symbol.svg"
+            class="outro-emblem-large"
+            id="outro-symbol"
+            alt="Cariño Emblem"
+          />
+          <h1 class="outro-wordmark" id="outro-wordmark">CARIÑO</h1>
+          <p class="outro-tagline" id="outro-tagline">Together, apart.</p>
+          <div class="outro-url-badge" id="outro-url">listentocarino.vercel.app</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GSAP Master Timeline -->
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // ───────────────────────────────────────────────────────────────────────
+      // SCENE 1 TIMELINE (0.0s – 4.5s)
+      // ───────────────────────────────────────────────────────────────────────
+      tl.set("#scene-1", { opacity: 1 }, 0);
+      tl.fromTo(
+        "#hook-symbol",
+        { opacity: 0, scale: 0.85, y: 16 },
+        { opacity: 1, scale: 1, y: 0, duration: 1.4, ease: "power3.out" },
+        0.2
+      );
+      tl.fromTo(
+        "#hook-line-1",
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.9, ease: "power2.out" },
+        0.8
+      );
+      tl.fromTo(
+        "#hook-line-2",
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.9, ease: "power2.out" },
+        1.7
+      );
+      tl.fromTo(
+        "#hook-line-3",
+        { opacity: 0, y: 20, scale: 0.96 },
+        { opacity: 1, y: 0, scale: 1, duration: 1.1, ease: "power3.out" },
+        2.6
+      );
+      // Gentle symbol pulse
+      tl.to(
+        "#hook-symbol .symbol-glow",
+        { opacity: 0.9, scale: 1.2, duration: 1.5, yoyo: true, repeat: 1, ease: "sine.inOut" },
+        1.2
+      );
+      // Outro transition for Scene 1
+      tl.to(
+        "#scene-1",
+        { opacity: 0, scale: 0.96, duration: 0.6, ease: "power2.inOut" },
+        4.1
+      );
+
+      // ───────────────────────────────────────────────────────────────────────
+      // SCENE 2 TIMELINE (4.5s – 9.2s)
+      // ───────────────────────────────────────────────────────────────────────
+      tl.set("#scene-2", { opacity: 1 }, 4.5);
+      tl.fromTo(
+        "#room-card",
+        { opacity: 0, scale: 0.92, y: 40 },
+        { opacity: 1, scale: 1, y: 0, duration: 1.0, ease: "power3.out" },
+        4.5
+      );
+      tl.fromTo(
+        "#room-badge",
+        { opacity: 0, y: -10 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
+        4.8
+      );
+      tl.fromTo(
+        ["#room-title", "#room-desc"],
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.6, stagger: 0.12, ease: "power2.out" },
+        5.0
+      );
+
+      // Sequential code letter arrivals with beat sync:
+      // snap letters C-A-R-I-N-O
+      const codeLetters = ["#code-c", "#code-a", "#code-r", "#code-i", "#code-n", "#code-o"];
+      codeLetters.forEach((sel, i) => {
+        tl.fromTo(
+          sel,
+          { opacity: 0, scale: 0.6, y: 20, borderColor: "rgba(255,255,255,0.05)" },
+          {
+            opacity: 1,
+            scale: 1,
+            y: 0,
+            borderColor: "rgba(255,255,255,0.35)",
+            duration: 0.28,
+            ease: "back.out(1.8)"
+          },
+          5.4 + i * 0.18
+        );
+      });
+
+      // Presence connection
+      tl.fromTo(
+        "#user-anshuman",
+        { opacity: 0, x: -30 },
+        { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" },
+        6.8
+      );
+      tl.fromTo(
+        "#user-carino",
+        { opacity: 0, x: 30 },
+        { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" },
+        7.1
+      );
+      tl.fromTo(
+        "#sync-connector",
+        { opacity: 0, scaleX: 0 },
+        { opacity: 1, scaleX: 1, duration: 0.7, ease: "power3.out" },
+        7.4
+      );
+      tl.fromTo(
+        "#sync-status-pill",
+        { scale: 0.8, boxShadow: "0 0 0 rgba(74,222,128,0)" },
+        { scale: 1, boxShadow: "0 0 24px rgba(74,222,128,0.4)", duration: 0.5, ease: "back.out(2)" },
+        7.7
+      );
+
+      // Outro transition for Scene 2
+      tl.to(
+        "#scene-2",
+        { opacity: 0, scale: 1.05, y: -20, duration: 0.6, ease: "power2.inOut" },
+        8.8
+      );
+
+      // ───────────────────────────────────────────────────────────────────────
+      // SCENE 3 TIMELINE (9.2s – 16.0s)
+      // ───────────────────────────────────────────────────────────────────────
+      tl.set("#scene-3", { opacity: 1 }, 9.2);
+
+      // 3D Carousel entrance with perspective sweep
+      tl.fromTo(
+        "#card-center",
+        { opacity: 0, scale: 0.8, z: -200, y: 50 },
+        { opacity: 1, scale: 1, z: 60, y: 0, duration: 1.2, ease: "power3.out" },
+        9.2
+      );
+      tl.fromTo(
+        "#card-left",
+        { opacity: 0, x: -60, rotateY: 45 },
+        { opacity: 0.55, x: 0, rotateY: 32, duration: 1.3, ease: "power3.out" },
+        9.4
+      );
+      tl.fromTo(
+        "#card-right",
+        { opacity: 0, x: 60, rotateY: -45 },
+        { opacity: 0.55, x: 0, rotateY: -32, duration: 1.3, ease: "power3.out" },
+        9.4
+      );
+
+      // Ambient glow breathing behind center cover
+      tl.fromTo(
+        "#ambient-glow",
+        { opacity: 0, scale: 0.7 },
+        { opacity: 0.85, scale: 1.15, duration: 2.0, ease: "power2.out" },
+        9.3
+      );
+      tl.to(
+        "#ambient-glow",
+        { scale: 1.3, opacity: 1.0, duration: 2.2, yoyo: true, repeat: 1, ease: "sine.inOut" },
+        11.3
+      );
+
+      // Track metadata & Floating MiniPlayer
+      tl.fromTo(
+        "#track-meta",
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.8, ease: "power2.out" },
+        10.1
+      );
+      tl.fromTo(
+        "#floating-player",
+        { opacity: 0, y: 50 },
+        { opacity: 1, y: 0, duration: 1.0, ease: "power3.out" },
+        10.4
+      );
+
+      // Smooth progress scrubbing from 42% to 64% over playback
+      tl.fromTo(
+        "#player-scrub-fill",
+        { width: "42%" },
+        { width: "64%", duration: 5.0, ease: "none" },
+        10.5
+      );
+
+      // 3D subtle continuous rotation / float
+      tl.to(
+        "#card-center",
+        { rotateY: 4, duration: 2.5, yoyo: true, repeat: 1, ease: "sine.inOut" },
+        11.0
+      );
+
+      // Outro transition for Scene 3
+      tl.to(
+        "#scene-3",
+        { opacity: 0, scale: 0.95, duration: 0.6, ease: "power2.inOut" },
+        15.5
+      );
+
+      // ───────────────────────────────────────────────────────────────────────
+      // SCENE 4 TIMELINE (16.0s – 20.0s)
+      // ───────────────────────────────────────────────────────────────────────
+      tl.set("#scene-4", { opacity: 1 }, 16.0);
+      tl.fromTo(
+        "#outro-symbol",
+        { opacity: 0, scale: 0.82, y: 24 },
+        { opacity: 1, scale: 1, y: 0, duration: 1.2, ease: "power3.out" },
+        16.0
+      );
+      tl.fromTo(
+        "#outro-wordmark",
+        { opacity: 0, y: 20, scale: 0.96 },
+        { opacity: 1, y: 0, scale: 1, duration: 1.2, ease: "power3.out" },
+        16.5
+      );
+      tl.fromTo(
+        "#outro-tagline",
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 1.0, ease: "power2.out" },
+        17.1
+      );
+      tl.fromTo(
+        "#outro-url",
+        { opacity: 0, scale: 0.9 },
+        { opacity: 1, scale: 1, duration: 0.8, ease: "back.out(1.5)" },
+        17.7
+      );
+
+      // Final quiet fade to black
+      tl.to(
+        ["#scene-4", ".cinematic-vignette", ".ambient-glow-mesh"],
+        { opacity: 0, duration: 0.6, ease: "power2.inOut" },
+        19.4
+      );
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getLocalBanners, saveLocalBanner, saveLocalFile } from '@/lib/storage/local';
 import { deleteServerMedia } from '@/lib/storage/serverUpload';
 import { requireAuth, requireAdmin, isAuthError } from '@/lib/auth/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getServiceRoleClient, isServiceRoleConfigured } from '@/lib/supabase/server';
 import { isSupabaseConfigured } from '@/lib/supabase/songs';
 import type { Banner } from '@/types';
 
@@ -64,7 +64,11 @@ export async function GET(req: NextRequest) {
     }
 
     // 2. Production: Supabase PostgreSQL is the strict source of truth
-    const supabase = await createClient();
+    // Use service role client when available to handle stale session tokens
+    // (can occur after a Supabase project pause/resume cycle).
+    const supabase = isServiceRoleConfigured()
+      ? getServiceRoleClient()
+      : await createClient();
     const { data: dbBanners, error } = await supabase
       .from('banners')
       .select('*')
@@ -210,7 +214,11 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Production Branch: Supabase Storage & Database Persistence ───────────
-    const supabase = await createClient();
+    // Use service role client when available — bypasses stale session tokens
+    // that occur when a Supabase project is paused and resumed (JWT secret rotated).
+    const supabase = isServiceRoleConfigured()
+      ? getServiceRoleClient()
+      : await createClient();
 
     // 1. Fetch current row from public.banners to preserve existing properties
     const { data: existingRow, error: fetchErr } = await supabase

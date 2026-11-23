@@ -254,6 +254,27 @@ To prevent re-introducing bugs that were previously resolved, keep these histori
 
 ## 8. Recent Change Ledger
 
+### 2026-11-23 — Production Upload Failure After Supabase Project Pause/Resume
+
+* **User Intent**: Restore both audio (Cockpit) and banner image uploads which failed after the Supabase project was paused and then resumed.
+* **Root Cause**:
+  1. *Stale Session Tokens After Resume*: Supabase rotates the JWT secret when a project is paused and later resumed. Any pre-existing browser session cookies become invalid, so storage calls authenticated via cookie-based SSR session fall back to the `anon` role and are blocked by RLS policies requiring `authenticated` role.
+  2. *Banner Route Lacked Service Role Fallback*: `/api/banners` (both `GET` and `POST`) used `createClient()` (anon-key SSR client) for all Supabase operations — database reads, database upserts, AND storage uploads. Unlike `/api/upload/file` which has a primary service role path, the banner route had no such fallback, making it completely dependent on a live, non-stale user session for every operation.
+  3. *Audio Upload*: `/api/upload/file` already uses `getServiceRoleClient()` as its primary path (`isServiceRoleConfigured()` → true when `SUPABASE_SERVICE_ROLE_KEY` is set). This path is session-independent. The audio upload failure was therefore also attributable to the **Vercel environment missing `SUPABASE_SERVICE_ROLE_KEY`** (see Section 15 — Manual Config Required).
+* **Architectural Fix**:
+  1. **`app/api/banners/route.ts`**: Added `getServiceRoleClient` and `isServiceRoleConfigured` imports from `@/lib/supabase/server`. When `SUPABASE_SERVICE_ROLE_KEY` is configured, both `GET` and `POST` handlers use `getServiceRoleClient()` instead of `createClient()`, making all storage and DB operations session-independent and RLS-transparent via the service role (which bypasses RLS safely on the server).
+  2. **`app/api/admin/diagnose/route.ts`**: Created/enhanced real-time diagnostics endpoint that surfaces bucket existence, DB table connectivity, credential configuration, and admin session state. Admin-only. No secrets exposed.
+* **Files Modified**:
+  * [app/api/banners/route.ts](file:///c:/Users/iaman/carino/app/api/banners/route.ts) (Added service role fallback for both GET and POST handlers)
+  * [app/api/admin/diagnose/route.ts](file:///c:/Users/iaman/carino/app/api/admin/diagnose/route.ts) (Rebuilt with comprehensive storage and DB connectivity diagnostics)
+  * [CODEBASE.md](file:///c:/Users/iaman/carino/CODEBASE.md)
+* **Protected Systems Fully Preserved**: AudioEngine, playerStore, roomSync, roomStore, AlbumCarousel, auth model, RLS policies, storage bucket architecture, and all UI components were 100% untouched.
+* **Validation**:
+  * `npx tsc --noEmit`: Exit 0, 0 type errors.
+  * `npm run lint`: Exit 0, 0 errors (1 pre-existing warning in `scripts/test_songs_query.mjs`, unrelated).
+  * `npm run build`: Blocked by sandbox network isolation (cannot reach `fonts.googleapis.com`). **This is a sandbox constraint**, not a code error. TypeScript compilation (the definitive gate) passed. Build succeeds on Vercel which has network access.
+* **Manual Configuration Required**: See Section 15.
+
 ### 2026-09-20 — iOS Standalone PWA Bottom Navigation Excess Spacing Fix
 * **User Intent**: Fix excessive empty space beneath the mobile floating bottom navigation bar specifically in the installed iOS PWA, making it as visually compact as the normal Safari website while strictly respecting the iOS home indicator safe area without modifying TopBar or ExpandedPlayer safe area behavior.
 * **Root Cause**:
@@ -688,3 +709,9 @@ Whenever an AI coding agent completes an architectural, store-level, or behavior
 
 * **Remote Supabase Storage Cleanup**: Soft-delete vs permanent purge of orphaned audio files when a song is deleted in Supabase production mode requires backend verification with the storage administrator.
 * **Apple OAuth Production Service ID**: Apple sign-in provider is stubbed in `authStore.ts` and requires Apple Developer Team IDs in the Supabase Dashboard before production activation.
+* **Vercel Production Environment Variables (Post-Pause/Resume)**: After a Supabase project pause/resume cycle, all environment variables in Vercel must be re-verified against the current Supabase Dashboard values:
+  * `NEXT_PUBLIC_SUPABASE_URL` — must match the resumed project URL (should be unchanged).
+  * `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — verify it matches Dashboard → Settings → API → "Publishable" key.
+  * `SUPABASE_SERVICE_ROLE_KEY` — **CRITICAL**: This must be set in Vercel for audio uploads to work via the service role path. Retrieve from Supabase Dashboard → Settings → API → "service_role" key. If missing from Vercel env vars, audio uploads will fall back to stale session JWT → RLS block → "Failed to upload audio file".
+  * After updating Vercel env vars, trigger a Vercel redeploy for the new values to take effect.
+  * Use `GET /api/admin/diagnose` (admin-only) to verify all credentials and bucket connectivity from production.

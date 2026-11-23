@@ -1,0 +1,6 @@
+Two people. Miles apart. One song.
+
+Cariño is a private, real-time synchronized listening room designed for couples and loved ones across distance — featuring sub-millisecond audio sync, a 3D perspective album experience, and zero playback drift.
+
+Together, apart.
+https://listentocarino.vercel.app
