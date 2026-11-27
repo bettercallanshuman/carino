@@ -4,7 +4,7 @@ Cariño — Listen Together, No Matter the Distance. ♡
   <strong>A shared music experience for people who are miles apart.</strong>
 </p>
 <p align="center">
-  <a href="https://listen-to-carino.vercel.app">Live Application</a> ·
+  <a href="https://listentocarino.vercel.app">Live Application</a> ·
   <a href="#features">Features</a> ·
   <a href="#tech-stack">Tech Stack</a> ·
   <a href="#getting-started">Getting Started</a>
@@ -222,5 +222,5 @@ Powered by Next.js, Supabase, and the technologies that make real-time experienc
   <strong>Made with ♡ for the people who listen together, even when they're apart.</strong>
 </p>
 <p align="center">
-  <a href="https://listen-to-carino.vercel.app">Experience Cariño</a>
+  <a href="https://listentocarino.vercel.app">Experience Cariño</a>
 </p>
