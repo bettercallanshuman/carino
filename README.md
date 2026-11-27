@@ -22,7 +22,7 @@ Whether you’re separated by a few hundred or thousands of kilometers, Cariño 
 
 The idea is simple: You don’t have to be in the same room to share the same song.
 
-🌐 Live: https://listen-to-carino.vercel.app
+🌐 Live: https://listentocarino.vercel.app
 
 Features
 
